@@ -1,6 +1,6 @@
 # 使用指南
 
-[返回首页](../README.md) · [常见问题](FAQ.md) · [数据与隐私](PRIVACY.md)
+[返回首页](README.md) · [常见问题](FAQ.md) · [数据与隐私](PRIVACY.md)
 
 ## 1. 安装 Cuvilo
 

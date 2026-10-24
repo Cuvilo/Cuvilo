@@ -1,13 +1,20 @@
-# Cuvilo
-
-**听清问题，整理你的回答思路。**
-
-Windows 实时面试练习助手，支持实时转写、截图提问与个人资料检索。
-
-**[下载 Windows 版](https://github.com/Cuvilo/Cuvilo/releases/latest)** · [使用指南](https://github.com/Cuvilo/Cuvilo/blob/main/docs/GETTING_STARTED.md) · [常见问题](https://github.com/Cuvilo/Cuvilo/blob/main/docs/FAQ.md) · [项目源码](https://github.com/Cuvilo/Cuvilo)
-
-<details>
-<summary>查看完整项目介绍：界面预览、安装说明与开发文档</summary>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Cuvilo/Cuvilo/main/desktop/public/brand/128x128.png" width="80" height="80" alt="Cuvilo Logo">
+</p>
+<h1 align="center">Cuvilo</h1>
+<p align="center"><strong>听清问题，整理你的回答思路。</strong></p>
+<p align="center">Windows 实时面试练习助手 · 实时转写 · 截图提问 · 个人资料</p>
+<p align="center">
+  <a href="https://github.com/Cuvilo/Cuvilo/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/Cuvilo/Cuvilo?style=flat-square&amp;color=171717&amp;label=Release"></a>
+  <a href="https://github.com/Cuvilo/Cuvilo/actions/workflows/release.yml"><img alt="Windows 发布构建" src="https://github.com/Cuvilo/Cuvilo/actions/workflows/release.yml/badge.svg"></a>
+  <a href="https://github.com/Cuvilo/Cuvilo/blob/main/LICENSE"><img alt="GPL-3.0 许可证" src="https://img.shields.io/badge/License-GPL--3.0-737373?style=flat-square"></a>
+</p>
+<p align="center">
+  <a href="https://github.com/Cuvilo/Cuvilo/releases/latest"><strong>下载 Windows 版</strong></a> ·
+  <a href="https://github.com/Cuvilo/Cuvilo/blob/main/docs/GETTING_STARTED.md">使用指南</a> ·
+  <a href="https://github.com/Cuvilo/Cuvilo/blob/main/docs/FAQ.md">常见问题</a> ·
+  <a href="https://github.com/Cuvilo/Cuvilo/issues/new/choose">反馈问题</a>
+</p>
 
 ![首页与首次使用引导](https://raw.githubusercontent.com/Cuvilo/Cuvilo/main/docs/images/home-guide.png)
 
@@ -80,5 +87,3 @@ npm run tauri dev
 Copyright (C) 2026 Cuvilo contributors.
 
 本项目按 **GNU General Public License version 3（GPL-3.0，仅第三版）** 发布，详见 [LICENSE](https://github.com/Cuvilo/Cuvilo/blob/main/LICENSE)。软件按原样提供，不附带担保。第三方依赖保留各自的版权与许可声明，例如 [shadcn/ui](https://github.com/Cuvilo/Cuvilo/blob/main/desktop/public/licenses/shadcn-ui.txt)。
-
-</details>
