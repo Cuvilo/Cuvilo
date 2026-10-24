@@ -28,7 +28,9 @@ try {
         # Tests load Windows common controls even when no visible window is created.
         & $mtToolPath -nologo -manifest $manifest "-outputresource:$testExe;#1"
         if ($LASTEXITCODE -ne 0) { throw 'Could not embed the common-controls test manifest.' }
-        & $testExe
+        # Native fixtures use the shared Windows credential store, COM and window state.
+        # Serialize harness tests; concurrency inside each regression test is retained.
+        & $testExe --test-threads=1
         if ($LASTEXITCODE -ne 0) { throw "Native tests failed with exit code $LASTEXITCODE." }
     }
 } finally { Pop-Location }

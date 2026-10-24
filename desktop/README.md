@@ -44,6 +44,10 @@ cargo run -- --diagnostics
 
 `--diagnostics` 输出音源和系统信息，不上传音频。`--audio-probe` 会临时采集音频并输出统计，需在用户明确安排后使用；不用于普通构建检查。
 
+原生测试脚本按顺序运行用例，避免Windows凭据、COM与原生窗口夹具并行争用；每项测试内部的并发回归仍保留。
+
+中文OCR环境集成测试默认忽略，需要简体中文OCR语言组件、Microsoft YaHei字体和中文用户首选语言；普通测试仍重复验证系统OCR的ASCII识别、原始图片和内存采样。
+
 原生可视/网络集成测试默认忽略。独立运行需要对应环境、Windows 公共控件 manifest，部分测试还需要界面预览服务。测试 manifest 保存在 `test-fixtures/windows.manifest`，不要对正在运行的测试 EXE 修改 manifest。
 
 ## 维护边界

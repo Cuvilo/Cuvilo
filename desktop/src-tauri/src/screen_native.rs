@@ -196,9 +196,13 @@ mod ocr_fixture_tests {
    let surface=Surface{dc,bitmap,previous,bits:bits.cast(),width,height};let crop=pick(surface,RECT{left:-30000,top:-30000,right:-30000+width,bottom:-30000+height},Arc::new(AtomicBool::new(false)),true).unwrap().unwrap();assert_eq!(crop.pixels.len(),200*80*4);drop(crop);
   }println!("PICKER_4K iterations=3 baseline_mib={:.2} sampled_allocated_peak_mib={:.2} final_mib={:.2}",before as f64/1048576.,peak as f64/1048576.,memory()as f64/1048576.);
  }}
- #[test] fn installed_system_ocr_reads_synthetic_chinese_and_ascii_repeatedly(){
+ #[test] fn installed_system_ocr_reads_synthetic_ascii_repeatedly(){exercise_ocr_fixture(false);}
+ #[test]
+ #[ignore="requires Simplified Chinese OCR, Microsoft YaHei and a Chinese user language; run separately with the test manifest"]
+ fn installed_system_ocr_reads_synthetic_chinese_and_ascii_repeatedly(){exercise_ocr_fixture(true);}
+ fn exercise_ocr_fixture(require_chinese:bool){
   let langs=languages().unwrap();assert!(!langs.is_empty(),"fixture requires installed OCR language");let before=memory();let started=std::time::Instant::now();let mut samples=vec![];
-  for _ in 0..12 {let crop=unsafe{fixture()};let(text,image)=recognize(crop,Arc::new(AtomicBool::new(false))).unwrap();assert!(text.contains("12345"),"synthetic ASCII recognition failed");assert!(text.contains("目标"),"synthetic Chinese recognition failed: {text:?}");assert_eq!(&image[..2],b"BM");drop(image);samples.push(memory());}
+  for _ in 0..12 {let crop=unsafe{fixture()};let(text,image)=recognize(crop,Arc::new(AtomicBool::new(false))).unwrap();assert!(text.contains("12345"),"synthetic ASCII recognition failed");if require_chinese{assert!(text.contains("目标"),"synthetic Chinese recognition failed: {text:?}");}assert_eq!(&image[..2],b"BM");drop(image);samples.push(memory());}
   println!("OCR_FIXTURE iterations=12 elapsed_ms={} baseline_mib={:.2} first_mib={:.2} final_mib={:.2} max_sample_mib={:.2}",started.elapsed().as_millis(),before as f64/1048576.,samples[0]as f64/1048576.,samples[11]as f64/1048576.,*samples.iter().max().unwrap()as f64/1048576.);
  }
 }
