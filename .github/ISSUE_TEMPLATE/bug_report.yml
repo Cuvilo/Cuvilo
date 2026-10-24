@@ -1,0 +1,52 @@
+name: 故障反馈 (Bug Report)
+description: 提交使用过程中遇到的问题或错误
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈问题！在提交之前，请先查看 [常见问题 (FAQ)](https://github.com/Cuvilo/Cuvilo/blob/main/docs/FAQ.md)。
+        **请注意：请勿在 Issue 中公开真实 API Key、录音原件、真实简历或个人隐私材料。**
+  - type: input
+    id: version
+    attributes:
+      label: 软件版本
+      description: 可以在托盘菜单右键或“设置 → 关于”中查看（例如 0.1.51）
+      placeholder: "0.1.51"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统环境
+      options:
+        - Windows 11
+        - Windows 10 (21H2 或更高版本)
+        - Windows 10 (较旧版本)
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 请清晰描述遇到了什么问题，以及期望的表现。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请使用合成/示例步骤进行说明。
+      placeholder: |
+        1. 打开首页
+        2. 点击...
+        3. 出现错误提示...
+    validations:
+      required: true
+  - type: textarea
+    id: logs_or_screenshots
+    attributes:
+      label: 截图或错误提示文字
+      description: 截图请务必遮盖 API Key、真实简历及私人聊天内容。

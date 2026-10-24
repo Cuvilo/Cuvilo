@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 常见问题解答 (FAQ)
+    url: https://github.com/Cuvilo/Cuvilo/blob/main/docs/FAQ.md
+    about: 遇到声音采集失败、模型未返回、OCR 缺失等问题时，请先阅读 FAQ。
+  - name: 使用指南
+    url: https://github.com/Cuvilo/Cuvilo/blob/main/docs/GETTING_STARTED.md
+    about: 首次配置回答模型、语音识别与材料导入完整教程。
