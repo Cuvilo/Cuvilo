@@ -1,6 +1,6 @@
 # 常见问题
 
-[返回首页](../README.md) · [使用指南](GETTING_STARTED.md) · [反馈问题](https://github.com/Cuvilo/Cuvilo/issues/new/choose)
+[返回首页](../.github/README.md) · [使用指南](GETTING_STARTED.md) · [反馈问题](https://github.com/Cuvilo/Cuvilo/issues/new/choose)
 
 ## 软件收费吗？需要自己的密钥吗？
 
