@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Cuvilo/Cuvilo/main/desktop/public/brand/128x128.png" width="80" height="80" alt="Cuvilo Logo">
+  <img src="desktop/public/brand/128x128.png" width="80" height="80" alt="Cuvilo Logo">
 </p>
 <h1 align="center">Cuvilo</h1>
 <p align="center"><strong>听清问题，整理你的回答思路。</strong></p>
@@ -7,16 +7,16 @@
 <p align="center">
   <a href="https://github.com/Cuvilo/Cuvilo/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/Cuvilo/Cuvilo?style=flat-square&amp;color=171717&amp;label=Release"></a>
   <a href="https://github.com/Cuvilo/Cuvilo/actions/workflows/release.yml"><img alt="Windows 发布构建" src="https://github.com/Cuvilo/Cuvilo/actions/workflows/release.yml/badge.svg"></a>
-  <a href="https://github.com/Cuvilo/Cuvilo/blob/main/LICENSE"><img alt="GPL-3.0 许可证" src="https://img.shields.io/badge/License-GPL--3.0-737373?style=flat-square"></a>
+  <a href="LICENSE"><img alt="GPL-3.0 许可证" src="https://img.shields.io/badge/License-GPL--3.0-737373?style=flat-square"></a>
 </p>
 <p align="center">
   <a href="https://github.com/Cuvilo/Cuvilo/releases/latest"><strong>下载 Windows 版</strong></a> ·
-  <a href="https://github.com/Cuvilo/Cuvilo/blob/main/docs/GETTING_STARTED.md">使用指南</a> ·
-  <a href="https://github.com/Cuvilo/Cuvilo/blob/main/docs/FAQ.md">常见问题</a> ·
+  <a href="docs/GETTING_STARTED.md">使用指南</a> ·
+  <a href="docs/FAQ.md">常见问题</a> ·
   <a href="https://github.com/Cuvilo/Cuvilo/issues/new/choose">反馈问题</a>
 </p>
 
-![首页与首次使用引导](https://raw.githubusercontent.com/Cuvilo/Cuvilo/main/docs/images/home-guide.png)
+![首页与首次使用引导](docs/images/home-guide.png)
 
 ## 下载与安装
 
@@ -28,7 +28,7 @@
 | `.sig`、`latest.json` | 软件自动更新使用的签名与清单，无需手动下载 |
 | GitHub 自动提供的 `Source code` | 对应标签的源码快照，不是可运行的安装包 |
 
-当前提供 Windows x64 版本，建议在 Windows 11 上使用。macOS、Linux、Windows ARM64 暂无原生发行版。指定应用声音采集需要 Windows build 20348 或以上；不满足时请选择系统声音。具体兼容范围见[使用指南](https://github.com/Cuvilo/Cuvilo/blob/main/docs/GETTING_STARTED.md)。
+当前提供 Windows x64 版本，建议在 Windows 11 上使用。macOS、Linux、Windows ARM64 暂无原生发行版。指定应用声音采集需要 Windows build 20348 或以上；不满足时请选择系统声音。具体兼容范围见[使用指南](docs/GETTING_STARTED.md)。
 
 ## 能做什么
 
@@ -43,7 +43,7 @@
 
 | 实时问答 · 深色 | 截图代码题 · 浅色 |
 | :---: | :---: |
-| <img src="https://raw.githubusercontent.com/Cuvilo/Cuvilo/main/docs/images/answer-dark.png" width="360" alt="深色答案窗口与演示缓存问题回答"> | <img src="https://raw.githubusercontent.com/Cuvilo/Cuvilo/main/docs/images/code-answer.png" width="360" alt="浅色截图代码题与代码复制入口"> |
+| <img src="docs/images/answer-dark.png" width="360" alt="深色答案窗口与演示缓存问题回答"> | <img src="docs/images/code-answer.png" width="360" alt="浅色截图代码题与代码复制入口"> |
 
 截图来自实际前端的隔离演示模式，只含合成问题、演示资料与模拟回答；不代表真实服务的识别准确率、响应速度或测评结果。
 
@@ -53,22 +53,22 @@
 2. **连接语音识别**：选择语音服务，填写所需凭据，检测并保存。
 3. **检测会议声音**：播放一段测试声音，选择系统声音或目标应用并检测；随后开始练习。
 
-需要结合个人背景回答时，可先在“个人材料”导入简历或知识资料。完整图文步骤见 **[使用指南](https://github.com/Cuvilo/Cuvilo/blob/main/docs/GETTING_STARTED.md)**。
+需要结合个人背景回答时，可先在“个人材料”导入简历或知识资料。完整图文步骤见 **[使用指南](docs/GETTING_STARTED.md)**。
 
-Cuvilo 本身不提供模型或语音额度，需要自行配置相应服务。第三方服务的开通、地区、计费和额度由平台决定；支持的服务及官方入口见[服务配置说明](https://github.com/Cuvilo/Cuvilo/blob/main/docs/GETTING_STARTED.md#服务与官方入口)。
+Cuvilo 本身不提供模型或语音额度，需要自行配置相应服务。第三方服务的开通、地区、计费和额度由平台决定；支持的服务及官方入口见[服务配置说明](docs/GETTING_STARTED.md#服务与官方入口)。
 
 ## 数据与隐私
 
 文字记录、材料和设置存于本机；服务密钥存于 Windows 凭据管理器。使用云端语音、回答模型、识图或 OCR 时，相应音频、文字、材料片段或图片会发送给所选服务。默认不保存原始录音，知识资料使用本地关键词检索，不下载 embedding 模型。
 
-更多信息见[数据与隐私说明](https://github.com/Cuvilo/Cuvilo/blob/main/docs/PRIVACY.md)。提交公开反馈时，请移除密钥和个人材料。
+更多信息见[数据与隐私说明](docs/PRIVACY.md)。提交公开反馈时，请移除密钥和个人材料。
 
 ## 帮助与反馈
 
-- [没有声音、识别失败、模型配置、更新和备份等常见问题](https://github.com/Cuvilo/Cuvilo/blob/main/docs/FAQ.md)
+- [没有声音、识别失败、模型配置、更新和备份等常见问题](docs/FAQ.md)
 - [报告故障或提出功能建议](https://github.com/Cuvilo/Cuvilo/issues/new/choose)
-- [版本更新记录](https://github.com/Cuvilo/Cuvilo/blob/main/CHANGELOG.md)
-- [安全问题反馈](https://github.com/Cuvilo/Cuvilo/blob/main/SECURITY.md)
+- [版本更新记录](CHANGELOG.md)
+- [安全问题反馈](SECURITY.md)
 
 ## 开发与贡献
 
@@ -80,10 +80,10 @@ npm ci
 npm run tauri dev
 ```
 
-[桌面开发说明](https://github.com/Cuvilo/Cuvilo/blob/main/desktop/README.md) · [贡献指南](https://github.com/Cuvilo/Cuvilo/blob/main/CONTRIBUTING.md) · [验证记录](https://github.com/Cuvilo/Cuvilo/blob/main/desktop/VALIDATION.md) · [发布维护说明](https://github.com/Cuvilo/Cuvilo/blob/main/RELEASING.md)
+[桌面开发说明](desktop/README.md) · [贡献指南](CONTRIBUTING.md) · [验证记录](desktop/VALIDATION.md) · [发布维护说明](RELEASING.md)
 
 ## 许可证
 
 Copyright (C) 2026 Cuvilo contributors.
 
-本项目按 **GNU General Public License version 3（GPL-3.0，仅第三版）** 发布，详见 [LICENSE](https://github.com/Cuvilo/Cuvilo/blob/main/LICENSE)。软件按原样提供，不附带担保。第三方依赖保留各自的版权与许可声明，例如 [shadcn/ui](https://github.com/Cuvilo/Cuvilo/blob/main/desktop/public/licenses/shadcn-ui.txt)。
+本项目按 **GNU General Public License version 3（GPL-3.0，仅第三版）** 发布，详见 [LICENSE](LICENSE)。软件按原样提供，不附带担保。第三方依赖保留各自的版权与许可声明，例如 [shadcn/ui](desktop/public/licenses/shadcn-ui.txt)。
