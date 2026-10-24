@@ -1,6 +1,6 @@
 # 数据与隐私说明
 
-[返回首页](../.github/README.md) · [使用指南](GETTING_STARTED.md)
+[返回首页](../README.md) · [使用指南](GETTING_STARTED.md)
 
 本说明描述当前桌面客户端的数据路径，不替代所选第三方服务的隐私政策。
 
