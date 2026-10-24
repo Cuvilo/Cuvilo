@@ -21,12 +21,21 @@ enum CaptionMode {
     Downloading,
     Restart,
 }
+fn caption_label(mode: CaptionMode, progress: Option<u32>, english: bool) -> String {
+    match mode {
+        CaptionMode::Download => if english { "Update" } else { "下载更新" }.into(),
+        CaptionMode::Restart => if english { "Restart" } else { "重启更新" }.into(),
+        CaptionMode::Downloading => progress.map(|n| format!("{} {}%", if english { "Get" } else { "下载" }, n.min(99)))
+            .unwrap_or_else(|| if english { "Getting…" } else { "下载中…" }.into()),
+    }
+}
 const WM_MOUSELEAVE: u32 = 0x02a3;
 struct CaptionAction {
     owner: HWND,
     button: Cell<HWND>,
     visible: Cell<bool>,
     enabled: Cell<bool>,
+    english: Cell<bool>,
     hover: Cell<bool>,
     pressed: Cell<bool>,
     close_pressed: Cell<bool>,
@@ -352,15 +361,7 @@ unsafe fn paint(button: HWND, action: &CaptionAction) {
             font.into()
         },
     );
-    let label = match action.mode.get() {
-        CaptionMode::Download => "下载更新".to_string(),
-        CaptionMode::Restart => "重启更新".to_string(),
-        CaptionMode::Downloading => action
-            .progress
-            .get()
-            .map(|n| format!("下载 {n}%"))
-            .unwrap_or_else(|| "下载中…".into()),
-    };
+    let label = caption_label(action.mode.get(),action.progress.get(),action.english.get());
     let mut label = label.encode_utf16().collect::<Vec<_>>();
     rect = pill;
     rect.left = px(24.);
@@ -653,6 +654,7 @@ unsafe fn attach(
         button: Cell::new(HWND::default()),
         visible: Cell::new(false),
         enabled: Cell::new(false),
+        english: Cell::new(false),
         hover: Cell::new(false),
         pressed: Cell::new(false),
         close_pressed: Cell::new(false),
@@ -718,13 +720,7 @@ unsafe fn update(
     action.enabled.set(enabled);
     action.mode.set(mode);
     action.progress.set(progress.map(|n| n.min(99)));
-    let label = match mode {
-        CaptionMode::Download => "下载更新".to_string(),
-        CaptionMode::Restart => "重启更新".to_string(),
-        CaptionMode::Downloading => progress
-            .map(|n| format!("下载 {}%", n.min(99)))
-            .unwrap_or_else(|| "下载中…".into()),
-    };
+    let label = caption_label(mode,progress,action.english.get());
     let label: Vec<u16> = label.encode_utf16().chain(Some(0)).collect();
     let _ = SetWindowTextW(action.button.get(), windows::core::PCWSTR(label.as_ptr()));
     if !visible {
@@ -761,6 +757,7 @@ pub async fn set_update_caption(
     mode: Option<String>,
     progress: Option<u32>,
     version: Option<String>,
+    english: Option<bool>,
 ) -> Result<(), String> {
     if window.label() != "main" {
         return Err("请在主窗口管理软件更新".into());
@@ -807,6 +804,7 @@ pub async fn set_update_caption(
             }
             if let Some(action) = state(hwnd) {
                 action.version.replace(version);
+                action.english.set(english.unwrap_or_else(||crate::ui_language::app_english(&app)));
             }
             update(hwnd, visible, enabled, mode, progress);
         }
@@ -935,5 +933,17 @@ mod native_tests {
             assert!(!IsWindow(Some(button)).as_bool());
             assert!(state(hwnd).is_none());
         }
+    }
+}
+
+#[cfg(test)]
+mod language_caption_tests {
+    use super::*;
+    #[test]
+    fn localized_labels_keep_the_same_compact_update_button_states() {
+        assert_eq!(caption_label(CaptionMode::Download,None,true),"Update");
+        assert_eq!(caption_label(CaptionMode::Restart,None,true),"Restart");
+        assert_eq!(caption_label(CaptionMode::Downloading,Some(42),true),"Get 42%");
+        assert_eq!(caption_label(CaptionMode::Restart,None,false),"重启更新");
     }
 }

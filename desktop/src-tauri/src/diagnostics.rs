@@ -110,6 +110,7 @@ pub fn run() -> Result<bool> {
             .and_then(|s| s.parse::<u32>().ok());
         let mic = args.iter().any(|a| a == "--microphone");
         let source = AudioSource {
+            process_capture_supported: None,
             id: "probe".into(),
             name: "Audio probe".into(),
             kind: if pid.is_some() { "process" } else { "system" }.into(),

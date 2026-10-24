@@ -1,3 +1,4 @@
+import {t as tr, currentLocale, useLocale} from "@/i18n";
 import {CodeBlock} from "./code-block";
 import {AnswerSources} from "./answer-sources";
 import { transcriptDisplayText, visibleTranscripts } from "@/state";
@@ -23,6 +24,7 @@ import { EmptyState, Spinner } from "./common";
 
 const CodeCopyContext=createContext<{onCopy?:(text:string)=>Promise<boolean>;enabled:boolean}>({enabled:true});
 function MarkdownPre({node,children}:ComponentPropsWithoutRef<"pre">&ExtraProps){
+  useLocale();
  const {onCopy,enabled}=useContext(CodeCopyContext);
  if(!enabled)return <pre>{children}</pre>;
  const code=node?.children.find(child=>child.type==="element"&&child.tagName==="code");
@@ -33,7 +35,8 @@ function MarkdownPre({node,children}:ComponentPropsWithoutRef<"pre">&ExtraProps)
 }
 const markdownComponents:Components={a:({children})=><span>{children}</span>,pre:MarkdownPre};
 export const AnswerText=memo(function AnswerText({answer,fontSize,onCopy,codeCopy=true}:{answer:Answer;fontSize:number;onCopy?:(text:string)=>Promise<boolean>;codeCopy?:boolean}){
- return <div className="answer-markdown flex-1" style={{fontSize}}><CodeCopyContext.Provider value={{onCopy,enabled:codeCopy}}><ReactMarkdown components={markdownComponents}>{answer.text||"正在整理回答…"}</ReactMarkdown></CodeCopyContext.Provider>{answer.status==="generating"&&<span className="stream-caret"/>}</div>;
+  useLocale();
+ return <div className="answer-markdown flex-1" style={{fontSize}}><CodeCopyContext.Provider value={{onCopy,enabled:codeCopy}}><ReactMarkdown components={markdownComponents}>{answer.text||tr("正在整理回答…")}</ReactMarkdown></CodeCopyContext.Provider>{answer.status==="generating"&&<span className="stream-caret"/>}</div>;
 });
 
 const statusText: Record<string, string> = {
@@ -53,6 +56,7 @@ export function AnswerCard({
   embedded?: boolean;
   readOnly?: boolean;
 }) {
+  useLocale();
   return (
     <article
       className={cn(
@@ -63,7 +67,7 @@ export function AnswerCard({
       <div className="flex items-center justify-between gap-3">
         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           <Zap className="size-3.5" />
-          {answer?.mode.startsWith("screen") ? "屏幕提问" : answer?.mode === "detail" ? "详细解释" : "短答"}
+          {answer?.mode.startsWith("screen") ? tr("屏幕提问") : answer?.mode === "detail" ? tr("详细解释") : tr("短答")}
         </span>
         {answer && (
           <Badge
@@ -75,7 +79,7 @@ export function AnswerCard({
             )}
           >
             {answer.status === "generating" && <Spinner />}
-            {statusText[answer.status] ?? answer.status}
+            {tr(statusText[answer.status] ?? answer.status)}
           </Badge>
         )}
       </div>
@@ -86,14 +90,14 @@ export function AnswerCard({
           </h2>
           <AnswerText answer={answer} fontSize={s.fontSize} onCopy={text=>s.copy(text,true)} /><AnswerSources answer={answer}/>
           {readOnly && <details className="mt-4 text-xs text-muted-foreground">
-            <summary className="cursor-pointer">响应耗时</summary>
+            <summary className="cursor-pointer">{tr("响应耗时")}</summary>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <span className="inline-flex items-center gap-1">
               <Clock3 className="size-3" />
-              首句 {milliseconds(answer.firstSentenceMs)}
+              {tr("首句")}{milliseconds(answer.firstSentenceMs)}
             </span>
-            <span>模型首字 {milliseconds(answer.firstTokenMs)}</span>
-            {answer.revision > 1 && <span>修订 {answer.revision}</span>}
+            <span>{tr("模型首字")}{" "}{milliseconds(answer.firstTokenMs)}</span>
+            {answer.revision > 1 && <span>{tr("修订")}{" "}{answer.revision}</span>}
             </div>
           </details>}
           <div className="mt-4 flex flex-wrap items-center gap-1.5 pt-3">
@@ -108,8 +112,7 @@ export function AnswerCard({
                   onClick={() => void s.request("detail", answer)}
                 >
                   <BookOpen />
-                  展开
-                </Button>
+                  {tr("展开")}</Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -118,8 +121,7 @@ export function AnswerCard({
                   onClick={() => void s.request("short", answer)}
                 >
                   <RefreshCw />
-                  重答
-                </Button>
+                  {tr("重答")}</Button>
                 {answer.status === "generating" && (
                   <Button
                     variant="ghost"
@@ -130,8 +132,7 @@ export function AnswerCard({
                     }
                   >
                     <Square />
-                    停止
-                  </Button>
+                    {tr("停止")}</Button>
                 )}
               </>
             )}
@@ -141,26 +142,28 @@ export function AnswerCard({
         <EmptyState
           compact
           brand
-          title="等待提问"
+          title={tr("等待提问")}
         />
       )}
     </article>
   );
 }
 export function TranscriptRow({ item: t }: { item: Transcript }) {
+  useLocale();
   const text = transcriptDisplayText(t.text);
   if (!text) return null;
   return <div className={cn("transcript-row", !t.isFinal && "transcript-interim")} data-transcript-id={t.id}>
     <div className="transcript-meta"><span>{transcriptLabel(t)}</span>
-      <time dateTime={new Date(t.at).toISOString()}>{new Date(t.at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</time>
-      {!t.isFinal && <span>识别中…</span>}
+      <time dateTime={new Date(t.at).toISOString()}>{new Date(t.at).toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</time>
+      {!t.isFinal && <span>{tr("识别中…")}</span>}
     </div><p>{text}</p>
   </div>;
 }
 
 export function TranscriptList({ items, compact = false }: { items: Transcript[]; compact?: boolean }) {
+  useLocale();
   const visible = visibleTranscripts(items);
-  if (!visible.length) return <EmptyState compact title="等待会议声音" icon={AudioLines} />;
+  if (!visible.length) return <EmptyState compact title={tr("等待会议声音")} icon={AudioLines} />;
   return <div className={cn("transcript-list", compact && "transcript-list-compact")}>
     {(compact ? visible.slice(-80) : visible).map(item => <TranscriptRow key={item.id} item={item} />)}
   </div>;

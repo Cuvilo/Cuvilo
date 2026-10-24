@@ -1,3 +1,4 @@
+import {t as tr, useLocale} from "@/i18n";
 import { FileText, History, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Settings2 } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ export function AppNavigation({ view, onNavigate, collapsed, onToggle }: {
   collapsed: boolean;
   onToggle: () => void;
 }) {
+  const locale=useLocale();
   const navigateWithKey = (event: KeyboardEvent<HTMLElement>) => {
     const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("button[data-navigation]"));
     const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
@@ -30,25 +32,25 @@ export function AppNavigation({ view, onNavigate, collapsed, onToggle }: {
     buttons[next].focus();
     onNavigate(navigation[next].id);
   };
-  return <aside className="app-sidebar" aria-label="主导航">
-      <nav className="sidebar-navigation" aria-label="页面" onKeyDown={navigateWithKey}>
+  return <aside className="app-sidebar" aria-label={tr("主导航")}>
+      <nav className="sidebar-navigation" aria-label={tr("页面")} onKeyDown={navigateWithKey}>
         {navigation.map(({ id, label, accessible, icon: Icon }) => {
           const selected = view === id;
-          return <TooltipHint key={id} label={label} side="right" enabled={collapsed}><Button variant="ghost" data-navigation={id}
-            aria-current={selected ? "page" : undefined} aria-label={accessible}
+          return <TooltipHint key={id} label={tr(label)} side="right" enabled={collapsed}><Button variant="ghost" data-navigation={id}
+            aria-current={selected ? "page" : undefined} aria-label={tr(accessible)}
             className={cn("navigation-item h-10 w-full rounded-lg px-0 text-sm", selected && "navigation-item-selected")}
             onClick={() => onNavigate(id)}>
             {selected && <span className="navigation-selection" aria-hidden="true" />}
             <span className="navigation-icon"><Icon className="size-5" /></span>
-            <span className="sidebar-copy navigation-label" aria-hidden={collapsed}>{label}</span>
+            <span className="sidebar-copy navigation-label" aria-hidden={collapsed}>{tr(label)}</span>
           </Button></TooltipHint>;
         })}
       </nav>
     <div className="sidebar-footer">
-      <TooltipHint label={collapsed ? "展开侧栏" : "收起侧栏"} side="right"><Button variant="ghost" className="navigation-item sidebar-toggle h-10 w-full px-0 text-sm" aria-label={collapsed ? "展开侧栏" : "收起侧栏"}
+      <TooltipHint label={collapsed ? tr("展开侧栏") : tr("收起侧栏")} side="right"><Button variant="ghost" className="navigation-item sidebar-toggle h-10 w-full px-0 text-sm" aria-label={collapsed ? tr("展开侧栏") : tr("收起侧栏")}
         aria-expanded={!collapsed} onClick={onToggle}>
         <span className="navigation-icon sidebar-toggle-icons"><PanelLeftClose className="size-5 sidebar-icon-close" /><PanelLeftOpen className="size-5 sidebar-icon-open" /></span>
-        <span className="sidebar-copy navigation-label" aria-hidden={collapsed}>收起侧栏</span>
+        <span className="sidebar-copy navigation-label" aria-hidden={collapsed}>{locale==="en"?"Collapse":tr("收起侧栏")}</span>
       </Button></TooltipHint>
     </div>
   </aside>;

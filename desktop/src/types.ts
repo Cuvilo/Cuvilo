@@ -8,6 +8,7 @@ export type Provider = {
   secretId: string;
 };
 export type Settings = {
+  language?: "system" | "zh-CN" | "en";
   theme?: "light"|"dark"|"system";
   closeAction?: "tray"|"quit";
   captureProtection: boolean;
@@ -27,6 +28,7 @@ export type Settings = {
   shortcutPresetVersion?: number;
 };
 export type AudioSource = {
+  processCaptureSupported?: boolean;
   id: string;
   name: string;
   kind: string;

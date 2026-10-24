@@ -26,6 +26,7 @@ mod storage;
 mod types;
 mod window_style;
 mod window_theme;
+mod ui_language;
 mod autostart;
 mod app_behavior;
 mod app_updater;
@@ -123,7 +124,7 @@ fn validate_settings(settings: &Settings, updates: &[SecretUpdate]) -> Result<()
     if !(14..=30).contains(&settings.font_size) {return Err("答案字号应在14–30px之间".into());}
     answer_appearance::alpha(settings.answer_opacity)?;
     if !(50..=2000).contains(&settings.answer_words){return Err("生成字数应在50–2000之间".into());}
-    if !["light","dark","system"].contains(&settings.theme.as_str())||!["tray","quit"].contains(&settings.close_action.as_str()){return Err("未知应用偏好".into());}
+    if !["system","zh-CN","en"].contains(&settings.language.as_str())||!["light","dark","system"].contains(&settings.theme.as_str())||!["tray","quit"].contains(&settings.close_action.as_str()){return Err("未知应用偏好".into());}
     if !["system","direct","manual"].contains(&settings.network.mode.as_str()){return Err("未知网络模式".into());}
     if settings.network.mode=="manual"{let url=url::Url::parse(&settings.network.url).map_err(|_|"代理地址格式不正确")?;if !["http","https"].contains(&url.scheme())||url.host_str().is_none(){return Err("代理地址格式不正确".into());}}
 
@@ -192,6 +193,8 @@ fn persist_settings(app:&tauri::AppHandle,core:&Arc<Core>,settings:Settings,upda
   let _=core.db.lock().unwrap().save_settings(&old);*core.settings.lock().unwrap()=old.clone();
   if let Some(before)=&before{capture_protection::save_failed(app,old.capture_protection,enabled,before,&error);}return Err(error);
  }
+ let language_changed=old.language!=core.settings.lock().unwrap().language;
+ if language_changed{ui_language::refresh_menus(app);}
  if let Some(before)=&before{capture_protection::restore_visible(app,before)?;}Ok(())
 }
 async fn modify_settings(app:tauri::AppHandle,core:Arc<Core>,build:impl FnOnce(Settings)->Result<(Settings,Vec<SecretUpdate>),String>+Send+'static)->Result<(),String>{
@@ -502,11 +505,13 @@ pub fn run() {
                     .push(format!("{e}。可在设置中修改；服务配置仍可正常保存。"));
             }
             use tauri::menu::{Menu, MenuItem};
-            let show = MenuItem::with_id(app, "show", "打开 Cuvilo", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-            let version = MenuItem::with_id(app, "app-update", format!("版本 {}", app.package_info().version), false, None::<&str>)?;
+            let english=ui_language::english(&settings.language);
+            let show = MenuItem::with_id(app, "show", if english {"Open Cuvilo"} else {"打开 Cuvilo"}, true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", if english {"Quit"} else {"退出"}, true, None::<&str>)?;
+            let version = MenuItem::with_id(app, "app-update", format!("{} {}", if english {"Version"} else {"版本"}, app.package_info().version), false, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &version, &quit])?;
             app.manage(tray_update::TrayUpdate(version));
+            app.manage(ui_language::TrayLabels{show,quit});
             let mut tray = tauri::tray::TrayIconBuilder::with_id("main")
                 .tooltip("Cuvilo")
                 .menu(&menu)
@@ -562,7 +567,7 @@ pub fn run() {
             cancel_answer,
             save_settings,
             save_services,
-            save_preferences, system_theme_dark, prepare_theme_transition, preview_theme, preview_answer_opacity,
+            ui_language::system_language_name, save_preferences, system_theme_dark, prepare_theme_transition, preview_theme, preview_answer_opacity,
             get_autostart,
             set_autostart,
             remove_provider,

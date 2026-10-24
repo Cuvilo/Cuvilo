@@ -1,3 +1,4 @@
+import {t as tr, useLocale, messageText} from "@/i18n";
 import { BrandMark } from "./brand-mark";
 import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { Toast as ToastPrimitive } from "radix-ui";
@@ -12,6 +13,7 @@ import { TooltipHint } from "./ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export function Spinner() {
+  useLocale();
   return <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />;
 }
 export function PageHeader({
@@ -25,8 +27,9 @@ export function PageHeader({
   actions?: ReactNode;
   leading?: ReactNode;
 }) {
+  useLocale();
   return (
-    <header className="page-header" aria-label={`${title}操作`}>
+    <header className="page-header" aria-label={tr("{0}操作", title)}>
       <h1 className="sr-only">{title}</h1>
       {description && <p className="sr-only">{description}</p>}
       <div className="page-header-leading">{leading}</div>
@@ -55,6 +58,7 @@ export function Panel({
   contentClassName?: string;
   grouped?: boolean;
 }) {
+  useLocale();
   return (
     <section className={cn("min-w-0", className)}>
       <Card className={cn("panel gap-0 py-0", grouped ? "rounded-2xl border shadow-[var(--shadow-card)]" : "border-0 shadow-none")}>
@@ -90,6 +94,7 @@ export function Field({
   aside?: ReactNode;
   children: ReactNode;
 }) {
+  useLocale();
   return (
     <div className="field">
       <div className="field-label">
@@ -99,7 +104,7 @@ export function Field({
         {aside}
       </div>
       {children}
-      {hint && <p className="field-hint">{hint}</p>}
+      {hint && <p className="field-hint">{tr(hint)}</p>}
     </div>
   );
 }
@@ -118,6 +123,7 @@ export function EmptyState({
   compact?: boolean;
   brand?: boolean;
 }) {
+  useLocale();
   return (
     <div
       className={cn(
@@ -141,6 +147,7 @@ export function IconButton({
   title,
   ...props
 }: ComponentProps<typeof Button> & { label: string }) {
+  useLocale();
   return (
     <TooltipHint label={title ?? label}>
       <Button variant="ghost" size="icon-sm" aria-label={label}
@@ -157,6 +164,7 @@ export function StatusBadge({
   children: ReactNode;
   tone?: "neutral" | "success" | "primary" | "error";
 }) {
+  useLocale();
   return (
     <Badge
       variant="secondary"
@@ -186,6 +194,7 @@ export function Notice({
   children: ReactNode;
   error?: boolean;
 }) {
+  useLocale();
   return (
     <Alert
       variant={error ? "destructive" : "default"}
@@ -196,12 +205,13 @@ export function Notice({
     >
       <CircleAlert className="size-4" />
       <AlertDescription className="break-words text-xs leading-6 [overflow-wrap:anywhere]">
-        {children}
+        {typeof children==="string"?messageText(children):children}
       </AlertDescription>
     </Alert>
   );
 }
 export function Shortcut({ children }: { children: ReactNode }) {
+  useLocale();
   return (
     <kbd className="inline-flex items-center rounded border bg-muted/60 px-1.5 py-0.5 font-sans text-[11px] leading-5 text-muted-foreground">
       {children}
@@ -212,11 +222,12 @@ export function Toast({ notification, onDismiss }: {
   notification: Notification | null;
   onDismiss: (id: number) => void;
 }) {
+  useLocale();
   // Retain the content while Radix Presence plays the closing fade.
   const [displayed, setDisplayed] = useState(notification);
   useEffect(() => { if (notification) setDisplayed(notification); }, [notification]);
   const Icon = displayed?.kind === "error" ? CircleAlert : displayed?.kind === "success" ? Check : Info;
-  return <ToastPrimitive.Provider label="操作提示" swipeDirection="right">
+  return <ToastPrimitive.Provider label={tr("操作提示")} swipeDirection="right">
     {displayed && <ToastPrimitive.Root key={displayed.id}
       open={notification?.id === displayed.id}
       onOpenChange={open => { if (!open) onDismiss(displayed.id); }}
@@ -224,11 +235,11 @@ export function Toast({ notification, onDismiss }: {
       type={displayed.kind === "error" ? "foreground" : "background"}
       className="toast-surface" data-kind={displayed.kind}>
       <Icon aria-hidden="true" className={cn("toast-icon", displayed.kind === "error" && "text-destructive")} />
-      <ToastPrimitive.Description className="toast-message">{displayed.message}</ToastPrimitive.Description>
+      <ToastPrimitive.Description className="toast-message">{messageText(displayed.message)}</ToastPrimitive.Description>
       {displayed.kind !== "success" && <ToastPrimitive.Close asChild>
-        <Button variant="ghost" size="icon-xs" aria-label="关闭提示" className="toast-close"><X /></Button>
+        <Button variant="ghost" size="icon-xs" aria-label={tr("关闭提示")} className="toast-close"><X /></Button>
       </ToastPrimitive.Close>}
     </ToastPrimitive.Root>}
-    <ToastPrimitive.Viewport className="toast-viewport" label="操作提示（{hotkey}）" />
+    <ToastPrimitive.Viewport className="toast-viewport" label={tr("操作提示（{hotkey}）")} />
   </ToastPrimitive.Provider>;
 }

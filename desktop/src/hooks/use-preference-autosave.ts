@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import {invoke} from "@tauri-apps/api/core";
 import type {Settings} from "@/types";
-export type PreferencePatch=Partial<Pick<Settings,"theme"|"closeAction"|"job"|"silenceMs"|"fontSize"|"answerOpacity"|"answerWords"|"captureProtection"|"network"|"shortcuts"|"screenCapture">>;
+export type PreferencePatch=Partial<Pick<Settings,"language"|"theme"|"closeAction"|"job"|"silenceMs"|"fontSize"|"answerOpacity"|"answerWords"|"captureProtection"|"network"|"shortcuts"|"screenCapture">>;
 export function usePreferenceAutosave(native:boolean,onSaved:(patch:PreferencePatch)=>void){
  const callback=useRef(onSaved);callback.current=onSaved;
  const pending=useRef<PreferencePatch>({}),timer=useRef<ReturnType<typeof setTimeout>|null>(null),inFlight=useRef<Promise<boolean>|null>(null),alive=useRef(true);

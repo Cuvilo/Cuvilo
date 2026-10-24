@@ -957,3 +957,6 @@ html[data-window="answer"],html[data-window="answer"] body,html[data-window="ans
 /* Update status remains in About; the ready action is in the native caption. */
 .update-settings-row .update-status { @apply m-0 text-sm text-foreground; }
 .update-release-notes { @apply max-h-48 overflow-y-auto whitespace-pre-wrap break-words text-sm text-muted-foreground; }
+
+/* Keep all English answer states readable without changing width on click. */
+html[lang="en"] .answer-primary-action { width: 140px; flex-shrink: 0; }

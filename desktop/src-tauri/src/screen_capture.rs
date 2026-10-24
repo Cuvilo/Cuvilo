@@ -166,7 +166,7 @@ pub fn start(app:tauri::AppHandle)->Result<()> {
    }
    trace_windows(&app,"hidden");
    tokio::time::sleep(std::time::Duration::from_millis(60)).await;
-   let flag=cancel.clone();let crop=tauri::async_runtime::spawn_blocking(move||native::select(flag)).await??;
+   let flag=cancel.clone();let english=crate::ui_language::app_english(&app);let crop=tauri::async_runtime::spawn_blocking(move||native::select(flag,english)).await??;
    trace_windows(&app,"picker_closed");
    let Some(crop)=crop else{return Ok(None)};
    if cancel.load(Ordering::Acquire){return Ok(None)}

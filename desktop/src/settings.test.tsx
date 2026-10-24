@@ -2022,3 +2022,33 @@ it("includes no-key Youdao by default, tests without credentials and persists on
  await user.click(screen.getByRole("button",{name:"保存"}));await waitFor(()=>expect(settings.ocrProvider).toBe("youdao-free"));expect(settings.providers).toEqual(before);expect(settings.activeModel).toBe("deepseek");expect(settings.asrProvider).toBe("xfyun");expect(secrets.deepseek.apiKey).toBe("saved-fixture-model-key");
  await closeService(user);await openService(user,"截图识别");expect(screen.getByRole("combobox",{name:"OCR 服务"}).textContent).toBe("有道云端 OCR");expect(api.invoke.mock.calls.some(([name,args])=>name==="read_provider_secret"&&args.providerId==="youdao-free")).toBe(false);
 });
+
+it("switches interface language immediately, persists it, and keeps service drafts intact",async()=>{
+ const user=await settingsPage();
+ const field=screen.getByLabelText("模型 API Key");await user.clear(field);await user.type(field,"fixture-unsaved-language-key");
+ await settingsTab(user,"偏好");
+ await user.click(screen.getByRole("combobox",{name:"界面语言"}));await user.click(screen.getByRole("option",{name:"English"}));
+ expect(await screen.findByRole("button",{name:"Settings"})).toBeTruthy();
+ await waitFor(()=>expect(api.invoke.mock.calls.some(([name,args])=>name==="save_preferences"&&args.patch.language==="en")).toBe(true));
+ expect(settings.language).toBe("en");expect(settings.job).toBe("fixture job");
+ expect(secrets.deepseek.apiKey).toBe("saved-fixture-model-key");
+ await user.click(screen.getByRole("combobox",{name:"Interface language"}));await user.click(screen.getByRole("option",{name:"简体中文"}));
+ await screen.findByRole("button",{name:"设置"});await settingsTab(user,"服务");
+ expect((screen.getByLabelText("模型 API Key") as HTMLInputElement).value).toBe("fixture-unsaved-language-key");
+ expect(api.invoke.mock.calls.some(([name])=>name==="save_services")).toBe(false);
+});
+it("applies a language change received from another window without changing the role or model",async()=>{
+ settings.language="en";render(<App/>);await screen.findByRole("button",{name:"Settings"});
+ settings.language="zh-CN";act(()=>api.channel?.onmessage({type:"settingsChanged",sessionId:""}));
+ expect(await screen.findByRole("button",{name:"设置"})).toBeTruthy();
+ expect(settings.job).toBe("fixture job");expect(settings.activeModel).toBe("deepseek");
+});
+it("explains that Windows 10 system audio still works when process capture is unavailable",async()=>{
+ const normal=api.invoke.getMockImplementation()!;
+ api.invoke.mockImplementation((name,args)=>name==="audio_sources"?Promise.resolve([{id:"system",name:"全部系统声音（包含其他应用）",kind:"system",pid:null,recommended:false,processCaptureSupported:false}]):normal(name,args));
+ const user=await settingsPage();await closeService(user);await user.click(screen.getByRole("button",{name:"开始面试"}));
+ await user.click(screen.getByRole("button",{name:"调整会议音源"}));
+ expect(await screen.findByText("当前 Windows 仅支持系统声音采集，可正常使用；无法仅采集指定应用。")).toBeTruthy();
+ expect(screen.getByRole("combobox",{name:"会议音源"}).textContent).toContain("全部系统声音");
+ expect(api.invoke.mock.calls.some(([name])=>name==="start_session")).toBe(false);
+});

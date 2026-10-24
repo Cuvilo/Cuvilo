@@ -1,3 +1,4 @@
+import {t as tr, useLocale} from "@/i18n";
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { FolderOpen } from "lucide-react";
@@ -7,6 +8,7 @@ import { materialDropError } from "@/lib/material-import";
 import { cn } from "@/lib/utils";
 
 export function MaterialDropZone({ store, children, className, onDropPaths, disabled = false }: { store: Copilot; children: ReactNode; className?: string; onDropPaths?: (paths: string[]) => void; disabled?: boolean }) {
+  useLocale();
   const zone = useRef<HTMLDivElement>(null);
   const latest = useRef({ store, onDropPaths, disabled });
   latest.current = { store, onDropPaths, disabled };
@@ -57,6 +59,6 @@ export function MaterialDropZone({ store, children, className, onDropPaths, disa
       store.notify(error ?? "当前是界面预览，请在桌面客户端中拖入材料。", error ? "error" : "info");
     }}>
     {children}
-    {hovering && <div className="material-drop-overlay" role="status"><FolderOpen aria-hidden="true" /><strong>松开以导入文件</strong></div>}
+    {hovering && <div className="material-drop-overlay" role="status"><FolderOpen aria-hidden="true" /><strong>{tr("松开以导入文件")}</strong></div>}
   </div>;
 }

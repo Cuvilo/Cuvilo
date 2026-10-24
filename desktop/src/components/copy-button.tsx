@@ -1,3 +1,4 @@
+import {t as tr, useLocale} from "@/i18n";
 import { useEffect, useRef, useState } from "react";
 import { Check, Clipboard } from "lucide-react";
 import type { Copilot } from "@/hooks/use-copilot";
@@ -5,6 +6,7 @@ import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 
 export function CopyButton({ store, text, compact = false, label="复制答案", copiedLabel="已复制" }: { store: Pick<Copilot,"copy">; text: string; compact?: boolean;label?:string;copiedLabel?:string }) {
+  useLocale();
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const live = useRef(true);
@@ -23,6 +25,6 @@ export function CopyButton({ store, text, compact = false, label="复制答案",
         timer.current = setTimeout(() => setCopied(false), 1200);
       }
     }}>
-    {copied ? <Check /> : <Clipboard />}{!compact && <span>{copied ? "已复制" : "复制"}</span>}
+    {copied ? <Check /> : <Clipboard />}{!compact && <span>{copied ? tr("已复制") : tr("复制")}</span>}
   </Button>;
 }

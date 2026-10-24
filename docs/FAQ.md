@@ -1,14 +1,20 @@
 # 常见问题
 
+**简体中文** | [English](FAQ.en.md)
+
 [返回首页](../README.md) · [使用指南](GETTING_STARTED.md) · [反馈问题](https://github.com/Cuvilo/Cuvilo/issues/new/choose)
 
 ## 软件收费吗？需要自己的密钥吗？
 
 本项目按 GPL-3.0 提供源码。Cuvilo 不附送回答模型或语音服务额度，使用相应云服务需要自行配置凭据，费用和额度以服务商为准。开源许可不代表第三方 API 免费。
 
+## 为什么 Windows 10 提示无法采集指定应用？
+
+0.1.51 的判断把 build 20348 当作硬门槛，导致 Windows 10 被提前排除。这比成熟软件的实际兼容范围更严格：Windows 10 2004（build 19041）及以上可尝试进程采音，实际是否可用仍取决于系统更新、接口激活和目标应用。源码已修正判断，改进随下一版发布；当前安装版请先使用“系统声音”。参考 [OBS 官方说明](https://obsproject.com/kb/application-audio-capture-guide)。
+
 ## 支持哪些系统？
 
-当前发行版是 Windows x64，建议在 Windows 11 使用。macOS、Linux、Windows ARM64 暂无原生发行版。指定应用声音采集要求 Windows build 20348 或以上；较旧系统请选择系统声音。其他环境尚未完整验证。
+当前发行版是 Windows x64，建议在 Windows 11 使用。macOS、Linux、Windows ARM64 暂无原生发行版。指定应用声音采集允许 Windows 10 2004（build 19041）及以上尝试；以实际接口激活结果为准，失败时请选择系统声音。其他环境尚未完整验证。
 
 ## 下载了源码压缩包，为什么不能直接运行？
 

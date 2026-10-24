@@ -641,6 +641,7 @@ mod native_live_tests {
         let session = core
             .start(StartOptions {
                 source: AudioSource {
+                    process_capture_supported: None,
                     id: "controlled-test".into(),
                     name: "Synthetic speech player".into(),
                     kind: "process".into(),

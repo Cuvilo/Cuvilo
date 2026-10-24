@@ -4,14 +4,15 @@ use anyhow::{ensure,Result};
 #[derive(Deserialize,Default)]
 #[serde(rename_all="camelCase",deny_unknown_fields)]
 pub struct PreferencesPatch{
- pub theme:Option<String>,pub close_action:Option<String>,pub job:Option<String>,pub silence_ms:Option<u64>,pub font_size:Option<u32>,pub answer_opacity:Option<u32>,pub answer_words:Option<u32>,pub capture_protection:Option<bool>,pub shortcuts:Option<Shortcuts>,pub network:Option<Network>,pub screen_capture:Option<ScreenPreferences>,
+ pub language:Option<String>,pub theme:Option<String>,pub close_action:Option<String>,pub job:Option<String>,pub silence_ms:Option<u64>,pub font_size:Option<u32>,pub answer_opacity:Option<u32>,pub answer_words:Option<u32>,pub capture_protection:Option<bool>,pub shortcuts:Option<Shortcuts>,pub network:Option<Network>,pub screen_capture:Option<ScreenPreferences>,
 }
 pub fn authorize_preferences(window:&str,patch:&PreferencesPatch)->std::result::Result<(),String>{
  if window=="main"{return Ok(());}
- if window=="answer"&&(patch.answer_opacity.is_some()||patch.answer_words.is_some())&&patch.theme.is_none()&&patch.close_action.is_none()&&patch.job.is_none()&&patch.silence_ms.is_none()&&patch.font_size.is_none()&&patch.capture_protection.is_none()&&patch.shortcuts.is_none()&&patch.network.is_none()&&patch.screen_capture.is_none(){return Ok(());}
+ if window=="answer"&&(patch.answer_opacity.is_some()||patch.answer_words.is_some())&&patch.language.is_none()&&patch.theme.is_none()&&patch.close_action.is_none()&&patch.job.is_none()&&patch.silence_ms.is_none()&&patch.font_size.is_none()&&patch.capture_protection.is_none()&&patch.shortcuts.is_none()&&patch.network.is_none()&&patch.screen_capture.is_none(){return Ok(());}
  Err("请在主窗口调整此设置".into())
 }
 impl PreferencesPatch{pub fn apply(self,mut s:Settings)->Settings{
+ if let Some(value)=self.language{s.language=value;}
  if let Some(value)=self.theme{s.theme=value;}if let Some(value)=self.close_action{s.close_action=value;}
  if let Some(value)=self.job{s.job=value;}if let Some(value)=self.silence_ms{s.silence_ms=value;}if let Some(value)=self.font_size{s.font_size=value;}if let Some(value)=self.answer_opacity{s.answer_opacity=value;}if let Some(value)=self.answer_words{s.answer_words=value;}if let Some(value)=self.capture_protection{s.capture_protection=value;}if let Some(value)=self.shortcuts{s.shortcuts=value;}if let Some(value)=self.network{s.network=value;}if let Some(mut value)=self.screen_capture{value.shift_double_click=false;s.screen_capture=value;}s
 }}
@@ -108,4 +109,20 @@ pub fn migrate_shortcut(s:&mut Settings)->bool{
   for index in 1..=3{providers.push(Provider{id:format!("openai-asr-fixture-{index}"),name:format!("OpenAI {index}"),kind:"openai-asr".into(),base_url:"https://api.openai.com/v1".into(),model:"gpt-transcribe".into(),app_id:String::new(),secret_id:String::new()});}
   let next=ServicesPatch{group:"asr".into(),providers,selected:"openai-asr-fixture-2".into(),screenshot_model:None}.apply(old.clone()).unwrap();assert_eq!(next.asr_provider,"openai-asr-fixture-2");let next=remove(next,"openai-asr-fixture-2").unwrap();assert!(next.providers.iter().any(|p|p.id==legacy));assert!(next.providers.iter().any(|p|p.id=="openai-asr-fixture-3"));assert_eq!(next.active_model,old.active_model);
  }
+}
+
+#[cfg(test)]
+mod language_tests {
+    use super::*;
+    #[test]
+    fn old_settings_follow_system_and_language_patch_keeps_other_data() {
+        let original=Settings::default();
+        let mut stored=serde_json::to_value(&original).unwrap();stored.as_object_mut().unwrap().remove("language");
+        let restored:Settings=serde_json::from_value(stored).unwrap();assert_eq!(restored.language,"system");
+        let patch:PreferencesPatch=serde_json::from_value(serde_json::json!({"language":"en"})).unwrap();
+        assert!(authorize_preferences("main",&patch).is_ok());assert!(authorize_preferences("answer",&patch).is_err());
+        let updated=patch.apply(restored);assert_eq!(updated.language,"en");assert_eq!(updated.job,original.job);
+        assert_eq!(serde_json::to_value(updated.providers).unwrap(),serde_json::to_value(original.providers).unwrap());
+        assert_eq!(updated.asr_provider,original.asr_provider);
+    }
 }

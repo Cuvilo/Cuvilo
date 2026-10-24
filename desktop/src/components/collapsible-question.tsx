@@ -1,3 +1,4 @@
+import {t as tr, useLocale} from "@/i18n";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "./ui/button";
@@ -6,6 +7,7 @@ export function CollapsibleQuestion({ text, preserveAnchor }: {
   text: string;
   preserveAnchor: (element: HTMLElement) => () => void;
 }) {
+  useLocale();
   const id = useId();
   const bubble = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLHeadingElement>(null);
@@ -31,7 +33,7 @@ export function CollapsibleQuestion({ text, preserveAnchor }: {
   return <div ref={bubble} className="answer-question compact-answer-question" data-expandable={expandable}>
     <h2 id={id} ref={content} className="compact-question-text" data-expanded={expanded}>{text}</h2>
     {expandable && <Button variant="ghost" size="icon-xs" className="question-toggle"
-      aria-label={expanded ? "收起完整问题" : "展开完整问题"} aria-expanded={expanded} aria-controls={id}
+      aria-label={expanded ? tr("收起完整问题") : tr("展开完整问题")} aria-expanded={expanded} aria-controls={id}
       onClick={() => {
         if (bubble.current) restore.current = preserveAnchor(bubble.current);
         setExpanded(value => !value);

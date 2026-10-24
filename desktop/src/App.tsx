@@ -1,4 +1,6 @@
+import {useLocale, messageText} from "@/i18n";
 import { useEffect, useState } from "react";
+import {useAppLanguage} from "./i18n";
 import { MotionConfig } from "motion/react";
 import { useTheme } from "./hooks/use-theme";
 import { useCopilot } from "./hooks/use-copilot";
@@ -17,6 +19,7 @@ import { HistoryView } from "./components/history-view";
 import { Notice, Toast } from "./components/common";
 
 export default function App() {
+  useLocale();
   useScrollbarActivity();
   useEffect(()=>{
     const preventMenu=(event:MouseEvent)=>event.preventDefault();
@@ -27,7 +30,9 @@ export default function App() {
 }
 
 function CopilotApp() {
+  useLocale();
   const store = useCopilot();
+  useAppLanguage(store.data.settings.language,store.loaded,store.native);
   const updates = useAppUpdater(store, new URLSearchParams(location.search).get("window") !== "answer");
   useTheme(store.data.settings.theme,store.loaded,store.native&&new URLSearchParams(location.search).get("window")!=="answer",store.native);
   const [collapsed, setCollapsed] = useState(() => {
@@ -53,7 +58,7 @@ function CopilotApp() {
           <UpdateCaptionAction updates={updates}/>
           {store.data.warnings.length > 0 && <div className="app-warnings">
             {store.data.warnings.map((message) => (
-              <Notice key={message}>{message}</Notice>
+              <Notice key={messageText(message)}>{messageText(message)}</Notice>
             ))}
           </div>}
             <div className={cn("page-content", store.view === "interview" && "workbench-page")}>

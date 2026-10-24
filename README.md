@@ -4,6 +4,7 @@
 <h1 align="center">Cuvilo</h1>
 <p align="center"><strong>听清问题，整理你的回答思路。</strong></p>
 <p align="center">Windows 实时面试练习助手 · 实时转写 · 截图提问 · 个人资料</p>
+<p align="center"><strong>简体中文</strong> | <a href="README.en.md">English</a></p>
 <p align="center">
   <a href="https://github.com/Cuvilo/Cuvilo/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/Cuvilo/Cuvilo?style=flat-square&amp;color=171717&amp;label=Release"></a>
   <a href="https://github.com/Cuvilo/Cuvilo/actions/workflows/release.yml"><img alt="Windows 发布构建" src="https://github.com/Cuvilo/Cuvilo/actions/workflows/release.yml/badge.svg"></a>
@@ -28,7 +29,7 @@
 | `.sig`、`latest.json` | 软件自动更新使用的签名与清单，无需手动下载 |
 | GitHub 自动提供的 `Source code` | 对应标签的源码快照，不是可运行的安装包 |
 
-当前提供 Windows x64 版本，建议在 Windows 11 上使用。macOS、Linux、Windows ARM64 暂无原生发行版。指定应用声音采集需要 Windows build 20348 或以上；不满足时请选择系统声音。具体兼容范围见[使用指南](docs/GETTING_STARTED.md)。
+当前提供 Windows x64 版本，建议在 Windows 11 上使用。macOS、Linux、Windows ARM64 暂无原生发行版。指定应用声音采集允许 Windows 10 2004（build 19041）及以上尝试，并以实际接口激活结果为准；系统补丁、目标应用或接口限制仍可能导致失败，此时请显式选择系统声音。已发布的 0.1.51 使用较严格的版本判断，Windows 10 用户暂可先用系统声音；兼容改进将在下一版提供。具体兼容范围见[使用指南](docs/GETTING_STARTED.md)。
 
 ## 能做什么
 
@@ -37,6 +38,7 @@
 - **截图提问**：识图模型直接理解选区；未指定或识图失败时，使用所选 OCR 服务提取文字后交给对话模型。
 - **管理个人资料**：支持 PDF、DOCX、UTF-8 TXT 和 Markdown；个人经历与知识资料分开管理。
 - **回看与导出**：保存文字转写、参考答案和面试历史，可导出 Markdown 并备份数据。
+- **界面语言（下一版）**：跟随系统、简体中文或 English，可在偏好中切换，保留材料、转写和模型回答原文。
 - **专注阅读**：独立答案窗口、浅色/深色/跟随系统、背景透明度、字号和生成字数设置。
 
 ## 界面预览

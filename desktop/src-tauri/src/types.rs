@@ -52,6 +52,7 @@ pub struct Network {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
+    #[serde(default="default_language")] pub language:String,
     #[serde(default="default_theme")] pub theme:String,
     #[serde(default="default_close_action")] pub close_action:String,
     #[serde(default)]
@@ -73,6 +74,7 @@ pub struct Settings {
     #[serde(default="default_answer_words")] pub answer_words:u32,
     #[serde(default)] pub shortcut_preset_version:u32,
 }
+fn default_language()->String {"system".into()}
 fn default_theme()->String {"light".into()}
 fn default_close_action()->String {"tray".into()}
 fn default_answer_opacity()->u32 {60}
@@ -90,7 +92,7 @@ pub struct ScreenPreferences {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            theme:default_theme(),close_action:default_close_action(),
+            language:default_language(),theme:default_theme(),close_action:default_close_action(),
             capture_protection: true,
             screen_capture: ScreenPreferences::default(),
             asr_provider: "xfyun".into(),
@@ -171,6 +173,7 @@ pub struct SecretUpdate {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioSource {
+    #[serde(default,skip_serializing_if="Option::is_none")] pub process_capture_supported:Option<bool>,
     pub id: String,
     pub name: String,
     pub kind: String,

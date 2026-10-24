@@ -110,9 +110,13 @@ pub fn windows_build() -> Option<u32> {
         .parse()
         .ok()
 }
+// The process-loopback API also works on updated Windows 10 2004+ builds.
+// Do not reject 19041-19045 based only on the SDK documentation's 20348 label.
+pub fn process_capture_candidate(build:Option<u32>)->bool { build.map_or(true,|value|value>=19041) }
 pub fn sources() -> Result<Vec<AudioSource>> {
     let _com = ComGuard::new()?;
     let mut out = vec![AudioSource {
+        process_capture_supported: None,
         id: "system".into(),
         name: "全部系统声音（包含其他应用）".into(),
         kind: "system".into(),
@@ -139,6 +143,7 @@ pub fn sources() -> Result<Vec<AudioSource>> {
                     || lower.contains("txmeeting")
                     || lower.contains("tencentmeeting");
                 out.push(AudioSource {
+                    process_capture_supported: None,
                     id: format!("process-{pid}"),
                     name: format!("{name} · PID {pid}"),
                     kind: "process".into(),
@@ -148,16 +153,16 @@ pub fn sources() -> Result<Vec<AudioSource>> {
             }
         }
     }
-    if windows_build().is_some_and(|build| build < 20348) {
+    if !process_capture_candidate(windows_build()) {
         out.retain(|s| s.kind == "system");
-        out[0].name.push_str("；当前 Windows 不支持进程采集");
+        out[0].process_capture_supported=Some(false);
     }
     out.sort_by_key(|s| !s.recommended);
     Ok(out)
 }
 unsafe fn process_client(pid: u32) -> Result<IAudioClient> {
-    if windows_build().is_some_and(|build| build < 20348) {
-        bail!("进程定向采集要求 Windows build 20348 或以上，请显式选择系统声音");
+    if !process_capture_candidate(windows_build()) {
+        bail!("进程定向采集需要 Windows 10 2004（build 19041）或更新版本，请显式选择系统声音");
     }
     let (tx, rx) = sync_mpsc::channel();
     let handler: IActivateAudioInterfaceCompletionHandler = Activation {
@@ -193,11 +198,12 @@ unsafe fn process_client(pid: u32) -> Result<IAudioClient> {
         Some(&*variant),
         &handler,
     )
-    .context("当前系统无法定向采集；请显式切换系统声音模式")?;
+    .context("无法初始化此应用的音频采集，请检查应用和系统更新，或显式选择系统声音")?;
     let raw = rx
         .recv_timeout(Duration::from_secs(8))
         .context("音频接口激活超时")?
-        .map_err(anyhow::Error::msg)?;
+        .map_err(anyhow::Error::msg)
+        .context("无法初始化此应用的音频采集，请检查应用和系统更新，或显式选择系统声音")?;
     Ok(IAudioClient::from_raw(raw as *mut _))
 }
 unsafe fn default_client(mic: bool) -> Result<(IAudioClient, IMMDeviceEnumerator, String)> {
@@ -350,4 +356,14 @@ fn capture(
         let _ = client.Stop();
         result
     }
+}
+
+#[cfg(test)]
+mod process_support_tests {
+ use super::*;
+ #[test]fn updated_windows_10_is_not_rejected_by_the_sdk_version_label(){
+  for build in [19041,19044,19045,20348,22000,26100]{assert!(process_capture_candidate(Some(build)),"build {build} must reach runtime activation");}
+  for build in [17763,18363]{assert!(!process_capture_candidate(Some(build)));}
+  assert!(process_capture_candidate(None),"an unknown version must be determined by runtime activation");
+ }
 }

@@ -1,3 +1,4 @@
+import {t as tr, useLocale, messageText} from "@/i18n";
 import {AnswerSources} from "./answer-sources";
 import { manualShortcut,shortcutMatches } from "@/lib/shortcut-validation";
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -28,6 +29,7 @@ import { ScanText } from "lucide-react";
 import { CollapsibleQuestion } from "./collapsible-question";
 
 function AnswerThreadItem({ answer, store: s, enter, preserveAnchor }: { answer: Answer; store: Copilot; enter: boolean; preserveAnchor: (element: HTMLElement) => () => void }) {
+  useLocale();
   // Entry belongs to the question, never to a streamed text update or revision.
   const [entering, setEntering] = useState(enter);
   return <article className={cn("answer-thread-card", entering && "answer-entry")}
@@ -36,17 +38,17 @@ function AnswerThreadItem({ answer, store: s, enter, preserveAnchor }: { answer:
     <CollapsibleQuestion text={answer.question} preserveAnchor={preserveAnchor} />
     <AnswerText answer={answer} fontSize={s.fontSize} onCopy={text=>s.copy(text,true)} />
     <AnswerSources answer={answer} actions={<>
-      {answer.status === "generating" && <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Spinner />生成中</span>}
-      {answer.status === "error" && <span className="text-xs text-destructive">生成失败</span>}
-      {answer.status === "cancelled" && <span className="text-xs text-muted-foreground">已停止</span>}
+      {answer.status === "generating" && <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Spinner />{tr("生成中")}</span>}
+      {answer.status === "error" && <span className="text-xs text-destructive">{tr("生成失败")}</span>}
+      {answer.status === "cancelled" && <span className="text-xs text-muted-foreground">{tr("已停止")}</span>}
       <CopyButton store={s} text={answer.text} compact />
       <DropdownMenu>
-        <TooltipHint label="答案操作"><DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-xs" aria-label="答案操作" className="text-muted-foreground"><MoreHorizontal /></Button>
+        <TooltipHint label={tr("答案操作")}><DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon-xs" aria-label={tr("答案操作")} className="text-muted-foreground"><MoreHorizontal /></Button>
         </DropdownMenuTrigger></TooltipHint>
         <DropdownMenuContent>
-          <DropdownMenuItem disabled={!s.data.session || !!s.busy} onSelect={() => void s.request("detail", answer)}><BookOpen />展开解释</DropdownMenuItem>
-          <DropdownMenuItem disabled={!s.data.session || !!s.busy} onSelect={() => void s.request("short", answer)}><RefreshCw />重新生成</DropdownMenuItem>
+          <DropdownMenuItem disabled={!s.data.session || !!s.busy} onSelect={() => void s.request("detail", answer)}><BookOpen />{tr("展开解释")}</DropdownMenuItem>
+          <DropdownMenuItem disabled={!s.data.session || !!s.busy} onSelect={() => void s.request("short", answer)}><RefreshCw />{tr("重新生成")}</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </>}/>
@@ -54,6 +56,7 @@ function AnswerThreadItem({ answer, store: s, enter, preserveAnchor }: { answer:
 }
 
 export function AnswerWindow({ store: s }: { store: Copilot }) {
+  useLocale();
   const answers = useMemo(() => questionTimeline(s.data.answers), [s.data.answers]);
   const sessionId = s.data.session?.id ?? answers.at(-1)?.sessionId ?? "";
   const feed = useAnswerFeed(answers, sessionId);
@@ -135,52 +138,51 @@ export function AnswerWindow({ store: s }: { store: Copilot }) {
       <TooltipHint label={s.currentStatus}><span role="status" aria-label={s.currentStatus}
         className={cn("status-dot", connected && "bg-success", meetingError && "bg-destructive")} /></TooltipHint>
       <span className="h-full min-w-3 flex-1" data-tauri-drag-region />
-      <TooltipHint label={(recognizing||generating ? s.data.settings.shortcuts.cancel : s.data.settings.shortcuts.answer)||"可在设置中启用快捷键"}><Button variant={recognizing||generating ? "secondary" : "primary"} size="sm" className="answer-primary-action h-7 w-[88px] gap-1 rounded-lg px-2 text-xs leading-[18px] has-[>svg]:px-2" disabled={!s.data.session || !!s.busy || screen?.stage==="ready"}
+      <TooltipHint label={(recognizing||generating ? s.data.settings.shortcuts.cancel : s.data.settings.shortcuts.answer)||tr("可在设置中启用快捷键")}><Button variant={recognizing||generating ? "secondary" : "primary"} size="sm" className="answer-primary-action h-7 w-[88px] gap-1 rounded-lg px-2 text-xs leading-[18px] has-[>svg]:px-2" disabled={!s.data.session || !!s.busy || screen?.stage==="ready"}
         onClick={() => recognizing ? void s.action("screen-cancel",()=>invoke("cancel_screen_capture")) : generating ? void s.action("cancel", () => invoke("cancel_answer")) : void s.request()}>
-        {recognizing||generating ? <Square /> : <Zap />}{recognizing ? "取消识别" : generating ? "停止生成" : "立即回答"}
+        {recognizing||generating ? <Square /> : <Zap />}{recognizing ? tr("取消识别") : generating ? tr("停止生成") : tr("立即回答")}
       </Button></TooltipHint>
-      <IconButton label={s.top ? "取消置顶" : "置顶窗口"} size="icon-xs" aria-pressed={s.top}
+      <IconButton label={s.top ? tr("取消置顶") : tr("置顶窗口")} size="icon-xs" aria-pressed={s.top}
         className="tool-button pin-toggle rounded-full" disabled={pinBusy} onClick={() => void toggleTop()}><Pin /></IconButton>
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-        <TooltipHint label="更多"><DropdownMenuTrigger asChild>
-          <Button ref={manualTrigger} variant="ghost" size="icon-xs" className="tool-button rounded-full bg-secondary hover:bg-surface-inset text-muted-foreground" aria-label="更多"><MoreHorizontal /></Button>
+        <TooltipHint label={tr("更多")}><DropdownMenuTrigger asChild>
+          <Button ref={manualTrigger} variant="ghost" size="icon-xs" className="tool-button rounded-full bg-secondary hover:bg-surface-inset text-muted-foreground" aria-label={tr("更多")}><MoreHorizontal /></Button>
         </DropdownMenuTrigger></TooltipHint>
         <DropdownMenuContent className="answer-reading-menu" onCloseAutoFocus={event => { if (manualFromMenu.current) { event.preventDefault(); manualFromMenu.current = false; queueManual(); } }}>
-          <DropdownMenuItem disabled={!s.data.session||pendingScreen||screen?.stage==="answering"||!!s.busy} onSelect={()=>void s.action("screen",async()=>{if(!await s.preferences.retry())throw "设置未保存，请重试";await invoke("begin_screen_capture");})}><ScanText/>截图提问<span className="ml-auto text-xs text-muted-foreground">{s.data.settings.shortcuts.screen||""}</span></DropdownMenuItem>
-          <DropdownMenuItem aria-label="手动提问" disabled={!s.data.session||pendingScreen} onSelect={() => { manualFromMenu.current = true; }}><PencilLine />手动提问<span className="ml-auto text-xs text-muted-foreground">{manualShortcut(s.data.settings.shortcuts)}</span></DropdownMenuItem>
+          <DropdownMenuItem disabled={!s.data.session||pendingScreen||screen?.stage==="answering"||!!s.busy} onSelect={()=>void s.action("screen",async()=>{if(!await s.preferences.retry())throw "设置未保存，请重试";await invoke("begin_screen_capture");})}><ScanText/>{tr("截图提问")}<span className="ml-auto text-xs text-muted-foreground">{s.data.settings.shortcuts.screen||""}</span></DropdownMenuItem>
+          <DropdownMenuItem aria-label={tr("手动提问")} disabled={!s.data.session||pendingScreen} onSelect={() => { manualFromMenu.current = true; }}><PencilLine />{tr("手动提问")}<span className="ml-auto text-xs text-muted-foreground">{manualShortcut(s.data.settings.shortcuts)}</span></DropdownMenuItem>
           <DropdownMenuSeparator />
-          <div className="answer-font-row" role="group" aria-label="答案字号">
-            <span>字号</span><div><Button variant="ghost" size="icon-xs" aria-label="减小字号" disabled={s.fontSize <= 14} onClick={() => s.setFontSize(size => Math.max(14,size-1))}>A−</Button><span className="tabular-nums">{s.fontSize}</span><Button variant="ghost" size="icon-xs" aria-label="增大字号" disabled={s.fontSize >= 30} onClick={() => s.setFontSize(size => Math.min(30,size+1))}>A＋</Button></div>
+          <div className="answer-font-row" role="group" aria-label={tr("答案字号")}>
+            <span>{tr("字号")}</span><div><Button variant="ghost" size="icon-xs" aria-label={tr("减小字号")} disabled={s.fontSize <= 14} onClick={() => s.setFontSize(size => Math.max(14,size-1))}>A−</Button><span className="tabular-nums">{s.fontSize}</span><Button variant="ghost" size="icon-xs" aria-label={tr("增大字号")} disabled={s.fontSize >= 30} onClick={() => s.setFontSize(size => Math.min(30,size+1))}>A＋</Button></div>
           </div>
-          <div className="answer-words-menu"><DropdownMenuItem aria-label="调整生成字数" onSelect={event=>{event.preventDefault();wordsInput.current?.focus();}}>生成字数</DropdownMenuItem><AnswerWordsInput ref={wordsInput} store={s} id="reading-answer-words"/></div>
+          <div className="answer-words-menu"><DropdownMenuItem aria-label={tr("调整生成字数")} onSelect={event=>{event.preventDefault();wordsInput.current?.focus();}}>{tr("生成字数")}</DropdownMenuItem><AnswerWordsInput ref={wordsInput} store={s} id="reading-answer-words"/></div>
           <div className="answer-opacity-menu">
-            <DropdownMenuItem className="answer-opacity-heading" aria-label="调整背景透明度" onSelect={event=>{event.preventDefault();opacityInput.current?.focus();}}>背景透明度<output htmlFor="reading-opacity">{100-s.answerOpacity}%</output></DropdownMenuItem>
-            <input ref={opacityInput} onKeyDown={event=>{if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End","PageUp","PageDown"].includes(event.key))event.stopPropagation();}} id="reading-opacity" aria-label="背景透明度" type="range" min={0} max={80} step={1} value={100-s.answerOpacity} onChange={event=>s.updatePreferences({answerOpacity:100-Number(event.target.value)})}/>
-            {s.preferences.status==="error"&&<div className="answer-opacity-error" role="alert"><span>{s.preferences.error}</span><Button size="xs" variant="ghost" onClick={()=>void s.preferences.retry()}>重试</Button></div>}
+            <DropdownMenuItem className="answer-opacity-heading" aria-label={tr("调整背景透明度")} onSelect={event=>{event.preventDefault();opacityInput.current?.focus();}}>{tr("背景透明度")}<output htmlFor="reading-opacity">{100-s.answerOpacity}%</output></DropdownMenuItem>
+            <input ref={opacityInput} onKeyDown={event=>{if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End","PageUp","PageDown"].includes(event.key))event.stopPropagation();}} id="reading-opacity" aria-label={tr("背景透明度")} type="range" min={0} max={80} step={1} value={100-s.answerOpacity} onChange={event=>s.updatePreferences({answerOpacity:100-Number(event.target.value)})}/>
+            {s.preferences.status==="error"&&<div className="answer-opacity-error" role="alert"><span>{messageText(s.preferences.error)}</span><Button size="xs" variant="ghost" onClick={()=>void s.preferences.retry()}>{tr("重试")}</Button></div>}
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuCheckboxItem checked={feed.paused} onCheckedChange={(paused) => paused ? feed.pause() : feed.resume()}>
-            暂停自动跟随
-          </DropdownMenuCheckboxItem>
+            {tr("暂停自动跟随")}</DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <TooltipHint label="结束"><Button variant="destructive" aria-label="结束" size="icon-xs" className="answer-end rounded-full" disabled={!!s.busy}
+      <TooltipHint label={tr("结束")}><Button variant="destructive" aria-label={tr("结束")} size="icon-xs" className="answer-end rounded-full" disabled={!!s.busy}
         onClick={() => void s.end()}>{s.busy === "stop" ? <Spinner /> : <X />}</Button></TooltipHint>
     </header>
     {s.notices.some((notice) => notice.error) && <div className="answer-window-notices">
       {s.notices.filter((notice) => notice.error).map((notice) => <Notice key={notice.source} error>{notice.message}</Notice>)}
     </div>}
     <div className="answer-reading-area">
-    <main ref={feed.viewport} className="answer-window-body" role="log" aria-label="问题与答案" aria-live="off" tabIndex={0} onScroll={feed.onScroll}>
+    <main ref={feed.viewport} className="answer-window-body" role="log" aria-label={tr("问题与答案")} aria-live="off" tabIndex={0} onScroll={feed.onScroll}>
       <div ref={feed.content} className={cn("answer-thread", feed.paused && "answer-thread-paused")}>
         {answers.length ? answers.map((answer) => <AnswerThreadItem key={`${sessionId}:${answer.questionId}`} answer={answer} store={s} preserveAnchor={feed.preserveAnchor}
           enter={!reduce && !feed.paused && entriesReady && !previous.current.ids.has(answer.questionId)} />) :
-          !pendingScreen&&screen?.stage!=="error"&&<div className="answer-thread-card"><EmptyState compact brand title="等待提问" /></div>}
+          !pendingScreen&&screen?.stage!=="error"&&<div className="answer-thread-card"><EmptyState compact brand title={tr("等待提问")} /></div>}
         <ScreenQuestionStatus store={s}/>
       </div>
     </main>
       {feed.paused && <Button variant="secondary" size="sm" className="answer-resume h-7 rounded-full px-2.5 text-xs has-[>svg]:px-2.5" onClick={feed.resume}>
-        <ArrowDown className="size-3.5 shrink-0" /><span className="truncate">{feed.pending ? `${feed.pending} 条新问题` : "回到最新"}</span>
+        <ArrowDown className="size-3.5 shrink-0" /><span className="truncate">{feed.pending ? tr("{0} 条新问题", feed.pending) : tr("回到最新")}</span>
       </Button>}
     </div>
     <Dialog modal={false} open={manualOpen} onOpenChange={setManualOpen}>
@@ -190,8 +192,8 @@ export function AnswerWindow({ store: s }: { store: Copilot }) {
         onFocusOutside={event => event.preventDefault()}
         onEscapeKeyDown={() => { manualOutside.current = false; }}
         onCloseAutoFocus={event => { event.preventDefault(); if (!manualOutside.current) manualTrigger.current?.focus(); }}>
-        <DialogTitle className="sr-only">手动输入问题</DialogTitle>
-        <DialogDescription className="sr-only">Enter 提交，Shift + Enter 换行。点击外部或按 Esc 收起，保留草稿。</DialogDescription>
+        <DialogTitle className="sr-only">{tr("手动输入问题")}</DialogTitle>
+        <DialogDescription className="sr-only">{tr("Enter 提交，Shift + Enter 换行。点击外部或按 Esc 收起，保留草稿。")}</DialogDescription>
         <QuestionComposer store={s} compact inputRef={manualInput} />
       </DialogContent>
     </Dialog>

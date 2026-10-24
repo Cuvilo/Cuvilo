@@ -101,7 +101,7 @@ pub fn normalize(a:POINT,b:POINT,width:i32,height:i32)->Option<RECT>{
  let r=RECT{left:a.x.min(b.x).clamp(0,width),top:a.y.min(b.y).clamp(0,height),right:a.x.max(b.x).clamp(0,width),bottom:a.y.max(b.y).clamp(0,height)};
  (r.right-r.left>=8&&r.bottom-r.top>=8).then_some(r)
 }
-struct Picker{surface:Surface,start:Option<POINT>,end:POINT,result:Option<RECT>,cancel:Arc<AtomicBool>,started:std::time::Instant}
+struct Picker{english:bool,surface:Surface,start:Option<POINT>,end:POINT,result:Option<RECT>,cancel:Arc<AtomicBool>,started:std::time::Instant}
 unsafe extern "system" fn picker_proc(hwnd:HWND,message:u32,w:WPARAM,l:LPARAM)->LRESULT {
  if message==WM_NCCREATE {let create=&*(l.0 as *const CREATESTRUCTW);SetWindowLongPtrW(hwnd,GWLP_USERDATA,create.lpCreateParams as isize);}
  let ptr=GetWindowLongPtrW(hwnd,GWLP_USERDATA)as *mut Picker;
@@ -122,7 +122,7 @@ unsafe extern "system" fn picker_proc(hwnd:HWND,message:u32,w:WPARAM,l:LPARAM)->
    let left=(state.surface.width-300).max(0)/2;let banner=RECT{left,top:20,right:(left+300).min(state.surface.width),bottom:58};
    FillRect(dc,&banner,black);SetTextColor(dc,COLORREF(0xFFFFFF));SetBkMode(dc,TRANSPARENT);
    let old=SelectObject(dc,GetStockObject(DEFAULT_GUI_FONT));
-   let mut title="框选题目 · Esc 取消".encode_utf16().collect::<Vec<_>>();let mut label=banner;
+   let mut title=if state.english{"Select a question · Esc to cancel"}else{"框选题目 · Esc 取消"}.encode_utf16().collect::<Vec<_>>();let mut label=banner;
    DrawTextW(dc,&mut title,&mut label,DT_CENTER|DT_VCENTER|DT_SINGLELINE);SelectObject(dc,old);
    if let Some(start)=state.start{if let Some(mut rect)=normalize(start,state.end,state.surface.width,state.surface.height){FrameRect(dc,&rect,black);rect.left+=1;rect.top+=1;rect.right-=1;rect.bottom-=1;FrameRect(dc,&rect,white);}}
    let _=DeleteObject(black.into());let _=DeleteObject(white.into());let _=EndPaint(hwnd,&paint);LRESULT(0)
@@ -132,7 +132,7 @@ unsafe extern "system" fn picker_proc(hwnd:HWND,message:u32,w:WPARAM,l:LPARAM)->
  }
 }
 #[cfg(test)] pub(super) static FIXTURE_SELECTION:std::sync::atomic::AtomicUsize=std::sync::atomic::AtomicUsize::new(0);
-pub fn select(cancel:Arc<AtomicBool>)->Result<Option<Crop>> {unsafe{
+pub fn select(cancel:Arc<AtomicBool>,english:bool)->Result<Option<Crop>> {unsafe{
  #[cfg(test)] {let mode=FIXTURE_SELECTION.swap(0,Ordering::SeqCst);if mode!=0{return ocr_fixture_tests::select_fixture(cancel,mode==2);}}
  if cancel.load(Ordering::Acquire){return Ok(None)}
  let previous=SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
@@ -141,10 +141,10 @@ pub fn select(cancel:Arc<AtomicBool>)->Result<Option<Crop>> {unsafe{
  let _dpi=Dpi(previous);
  let mut point=POINT::default();GetCursorPos(&mut point)?;
  let monitor=MonitorFromPoint(point,MONITOR_DEFAULTTONEAREST);let mut info=MONITORINFO{cbSize:size_of::<MONITORINFO>()as u32,..Default::default()};ensure!(GetMonitorInfoW(monitor,&mut info).as_bool(),"无法读取屏幕边界");
- let bounds=info.rcMonitor;let _=windows::Win32::Graphics::Dwm::DwmFlush();let surface=Surface::capture(bounds)?;pick(surface,bounds,cancel,false)
+ let bounds=info.rcMonitor;let _=windows::Win32::Graphics::Dwm::DwmFlush();let surface=Surface::capture(bounds)?;pick(surface,bounds,cancel,false,english)
 }}
-fn pick(surface:Surface,bounds:RECT,cancel:Arc<AtomicBool>,fixture:bool)->Result<Option<Crop>>{unsafe{
- let mut state=Box::new(Picker{surface,start:None,end:POINT::default(),result:None,cancel,started:std::time::Instant::now()});
+fn pick(surface:Surface,bounds:RECT,cancel:Arc<AtomicBool>,fixture:bool,english:bool)->Result<Option<Crop>>{unsafe{
+ let mut state=Box::new(Picker{english,surface,start:None,end:POINT::default(),result:None,cancel,started:std::time::Instant::now()});
  let class=w!("CuviloScreenPicker");let wc=WNDCLASSW{lpfnWndProc:Some(picker_proc),hCursor:LoadCursorW(None,IDC_CROSS)?,lpszClassName:class,..Default::default()};
  let atom=RegisterClassW(&wc);if atom==0{let error=GetLastError();ensure!(error==ERROR_CLASS_ALREADY_EXISTS,"无法注册框选窗口：{error:?}");}
  let hwnd=CreateWindowExW(WS_EX_TOPMOST|WS_EX_TOOLWINDOW,class,w!("Cuvilo 截图提问"),WS_POPUP,bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top,None,None,None,Some((&mut *state as *mut Picker).cast()))?;
@@ -182,18 +182,18 @@ mod ocr_fixture_tests {
  pub(super) unsafe fn select_fixture(cancel:Arc<AtomicBool>,cancelled:bool)->Result<Option<Crop>> {
   let crop=fixture();let dc=CreateCompatibleDC(None);let mut info=BITMAPINFO::default();info.bmiHeader=BITMAPINFOHEADER{biSize:size_of::<BITMAPINFOHEADER>()as u32,biWidth:crop.width,biHeight:-crop.height,biPlanes:1,biBitCount:32,biCompression:BI_RGB.0,..Default::default()};let mut bits=std::ptr::null_mut();let bitmap=CreateDIBSection(Some(dc),&info,DIB_RGB_COLORS,&mut bits,None,0)?;let previous=SelectObject(dc,bitmap.into());std::ptr::copy_nonoverlapping(crop.pixels.as_ptr(),bits.cast::<u8>(),crop.pixels.len());let surface=Surface{dc,bitmap,previous,bits:bits.cast(),width:crop.width,height:crop.height};
   if cancelled{cancel.store(true,Ordering::Release);}
-  pick(surface,RECT{left:-30000,top:-30000,right:-28500,bottom:-29760},cancel,true)
+  pick(surface,RECT{left:-30000,top:-30000,right:-28500,bottom:-29760},cancel,true,false)
  }
  fn memory()->usize {unsafe{use windows::Win32::System::{ProcessStatus::*,Threading::*};let mut counters=PROCESS_MEMORY_COUNTERS::default();GetProcessMemoryInfo(GetCurrentProcess(),&mut counters,size_of::<PROCESS_MEMORY_COUNTERS>()as u32).unwrap();counters.WorkingSetSize}}
  #[test] fn protected_native_picker_repeatedly_crops_and_cancels_without_focus(){unsafe{
   for i in 0..12 {let crop=fixture();let dc=CreateCompatibleDC(None);let mut info=BITMAPINFO::default();info.bmiHeader=BITMAPINFOHEADER{biSize:size_of::<BITMAPINFOHEADER>()as u32,biWidth:crop.width,biHeight:-crop.height,biPlanes:1,biBitCount:32,biCompression:BI_RGB.0,..Default::default()};let mut bits=std::ptr::null_mut();let bitmap=CreateDIBSection(Some(dc),&info,DIB_RGB_COLORS,&mut bits,None,0).unwrap();let previous=SelectObject(dc,bitmap.into());std::ptr::copy_nonoverlapping(crop.pixels.as_ptr(),bits.cast::<u8>(),crop.pixels.len());let surface=Surface{dc,bitmap,previous,bits:bits.cast(),width:crop.width,height:crop.height};
-   let result=pick(surface,RECT{left:-30000,top:-30000,right:-28500,bottom:-29760},Arc::new(AtomicBool::new(i%2==1)),true).unwrap();if i%2==0{let crop=result.unwrap();assert_eq!((crop.width,crop.height),(200,80));assert_eq!(crop.pixels.len(),200*80*4);}else{assert!(result.is_none());}
+   let result=pick(surface,RECT{left:-30000,top:-30000,right:-28500,bottom:-29760},Arc::new(AtomicBool::new(i%2==1)),true,false).unwrap();if i%2==0{let crop=result.unwrap();assert_eq!((crop.width,crop.height),(200,80));assert_eq!(crop.pixels.len(),200*80*4);}else{assert!(result.is_none());}
   }
  }}
  #[test] fn four_k_picker_releases_full_screen_pixels_after_cropping(){unsafe{
   let before=memory();let mut peak=before;for _ in 0..3 {
    let width=3840;let height=2160;let dc=CreateCompatibleDC(None);let mut info=BITMAPINFO::default();info.bmiHeader=BITMAPINFOHEADER{biSize:size_of::<BITMAPINFOHEADER>()as u32,biWidth:width,biHeight:-height,biPlanes:1,biBitCount:32,biCompression:BI_RGB.0,..Default::default()};let mut bits=std::ptr::null_mut();let bitmap=CreateDIBSection(Some(dc),&info,DIB_RGB_COLORS,&mut bits,None,0).unwrap();let previous=SelectObject(dc,bitmap.into());std::ptr::write_bytes(bits.cast::<u8>(),255,width as usize*height as usize*4);peak=peak.max(memory());
-   let surface=Surface{dc,bitmap,previous,bits:bits.cast(),width,height};let crop=pick(surface,RECT{left:-30000,top:-30000,right:-30000+width,bottom:-30000+height},Arc::new(AtomicBool::new(false)),true).unwrap().unwrap();assert_eq!(crop.pixels.len(),200*80*4);drop(crop);
+   let surface=Surface{dc,bitmap,previous,bits:bits.cast(),width,height};let crop=pick(surface,RECT{left:-30000,top:-30000,right:-30000+width,bottom:-30000+height},Arc::new(AtomicBool::new(false)),true,false).unwrap().unwrap();assert_eq!(crop.pixels.len(),200*80*4);drop(crop);
   }println!("PICKER_4K iterations=3 baseline_mib={:.2} sampled_allocated_peak_mib={:.2} final_mib={:.2}",before as f64/1048576.,peak as f64/1048576.,memory()as f64/1048576.);
  }}
  #[test] fn installed_system_ocr_reads_synthetic_ascii_repeatedly(){exercise_ocr_fixture(false);}

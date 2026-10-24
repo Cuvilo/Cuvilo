@@ -1,3 +1,4 @@
+import {t as tr, useLocale} from "@/i18n";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Input } from "./components/ui/input";
@@ -16,13 +17,14 @@ export function SecretInput({
   placeholder: string;
   onChange: (value: string) => void;
 }) {
+  useLocale();
   const [visible, setVisible] = useState(false);
   const toggleLabel = visible ? "隐藏密钥" : "显示密钥";
   return (
     <div className="relative flex w-full items-center">
       <Input
         id={id}
-        aria-label={label}
+        aria-label={tr(label)}
         type={visible ? "text" : "password"}
         className="pr-11"
         autoComplete="off"

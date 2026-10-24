@@ -1,3 +1,4 @@
+import {cachedLanguage} from "@/i18n";
 import type {
   Answer,
   AudioSource,
@@ -105,7 +106,7 @@ export function createPreview(settings: Settings): Snapshot {
   const screenQuestion="给定整数数组 nums 和目标值 target，返回和为 target 的两个元素下标。每个元素只能使用一次。\n示例：nums = [2, 7, 11, 15]，target = 9，返回 [0, 1]。";
   const screenAnswer={...previewAnswers[0],id:"screen-demo-answer",questionId:"screen-demo-question",mode:"screen",question:screenQuestion,text:"使用哈希表记录已经遍历的数及其下标。每遍历一个数，检查它所需的另一个数是否已经出现。\n\n```python\ndef two_sum(nums, target):\n    seen = {}\n    for i, value in enumerate(nums):\n        other = target - value\n        if other in seen:\n            return [seen[other], i]\n        seen[value] = i\n```\n\n时间复杂度 **O(n)**，空间复杂度 **O(n)**。"};
   return {
-    settings: { ...structuredClone(settings), theme, job: "Java 后端工程师", providers:settings.providers.map(p=>p.kind==="xfyun"?{...p,appId:"preview-app-id"}:p) },
+    settings: { ...structuredClone(settings), language: new URLSearchParams(location.search).get("lang")==="en"?"en":new URLSearchParams(location.search).get("lang")==="zh-CN"?"zh-CN":cachedLanguage(), theme, job: "Java 后端工程师", providers:settings.providers.map(p=>p.kind==="xfyun"?{...p,appId:"preview-app-id"}:p) },
     configured: new URLSearchParams(location.search).get("setupDemo")==="empty"?[]:new URLSearchParams(location.search).get("setupDemo")==="model"?[settings.activeModel]:[settings.asrProvider,settings.activeModel],
     warnings: [],
     notices: [],

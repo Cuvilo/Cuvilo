@@ -44,6 +44,7 @@ pub async fn set_tray_update(
         version.as_deref(),
         blocked,
     )?;
+    let text=if crate::ui_language::app_english(&app){text.replacen("版本 ","Version ",1)}else{text};
     crate::window_lifecycle::on_ui(&app, move |app| {
         let tray = app.state::<TrayUpdate>();
         tray.0

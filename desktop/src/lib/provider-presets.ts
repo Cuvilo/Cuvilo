@@ -1,7 +1,12 @@
+import {t as tr} from "@/i18n";
 import type { Provider, Settings } from "@/types";
 export type ServiceGroup="model"|"asr"|"ocr";
 type Preset={id:string;name:string;group:ServiceGroup;kind:string;baseUrl:string;model:string};
-export function providerDisplayName(p:Pick<Provider,"id"|"name">){return p.id.startsWith("custom-asr-")&&/^自定义语音接口(?: \d+)?$/.test(p.name)?p.name.replace("自定义语音接口","兼容接口"):p.name;}
+export function providerDisplayName(p:Pick<Provider,"id"|"name">){
+ const name=p.id.startsWith("custom-asr-")&&/^自定义语音接口(?: \d+)?$/.test(p.name)?p.name.replace("自定义语音接口","兼容接口"):p.name;
+ const builtin=providerPresets.find(item=>(p.id===item.id||p.id.startsWith(item.id+"-"))&&(name===item.name||(name.startsWith(item.name+" ")&&/^\d+$/.test(name.slice(item.name.length+1)))));
+ return builtin?tr(builtin.name)+name.slice(builtin.name.length):name;
+}
 export const youdaoFreeOcr:Provider={id:"youdao-free",name:"有道云端 OCR",kind:"youdao-free",baseUrl:"https://ocrtran.youdao.com/ocr/imgtranocr",model:"auto",appId:"",secretId:""};
 export const cloudOcrKinds=["youdao-ocr","ocr-space"];
 export const isCloudOcr=(p:Pick<Provider,"kind">)=>cloudOcrKinds.includes(p.kind);
@@ -25,7 +30,7 @@ export const providerPresets:Preset[]=[
 export function createProvider(id:string,providers:Provider[]=[]):Provider {
  const preset=providerPresets.find(p=>p.id===id);
  if(!preset)throw new Error("未知服务");
- let name=preset.name;for(let suffix=2;providers.some(p=>providerDisplayName(p)===name);suffix++)name=`${preset.name} ${suffix}`;
+ let name=preset.name;for(let suffix=2;providers.some(p=>p.name===name);suffix++)name=`${preset.name} ${suffix}`;
  return {id:`${preset.id}-${crypto.randomUUID()}`,name,kind:preset.kind,baseUrl:preset.baseUrl,model:preset.model,appId:"",secretId:""};
 }
 

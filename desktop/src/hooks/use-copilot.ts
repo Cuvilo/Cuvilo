@@ -37,6 +37,7 @@ function settingsSignature(value: unknown): string {
 }
 const native = isTauri();
 const initial: Settings = {
+  language: "system",
   captureProtection: true,
   asrProvider: "dashscope",
   activeModel: "qwen",
@@ -506,7 +507,7 @@ export function useCopilot() {
     const baseline=draft??data.settings;patch=Object.fromEntries(Object.entries(patch).filter(([key,value])=>settingsSignature(value)!==settingsSignature(baseline[key as keyof Settings]))) as PreferencePatch;
     if(!Object.keys(patch).length)return;
     setDraft(old=>({...old??data.settings,...patch}));
-    if(patch.theme!==undefined)setData(old=>({...old,settings:{...old.settings,theme:patch.theme!}}));
+    if(patch.theme!==undefined||patch.language!==undefined)setData(old=>({...old,settings:{...old.settings,...(patch.theme!==undefined?{theme:patch.theme}:{}),...(patch.language!==undefined?{language:patch.language}:{})}}));
     const valid=!(patch.answerWords!==undefined&&(!Number.isInteger(patch.answerWords)||patch.answerWords<50||patch.answerWords>2000))
       &&!(patch.fontSize!==undefined&&(!Number.isInteger(patch.fontSize)||patch.fontSize<14||patch.fontSize>30))
       &&!(patch.silenceMs!==undefined&&(!Number.isInteger(patch.silenceMs)||patch.silenceMs<300||patch.silenceMs>2000))

@@ -171,10 +171,12 @@ pub fn block(app: &tauri::AppHandle, error: &str, requested: bool, mut resume: V
         return;
     }
     let app_copy = app.clone();
-    app.dialog().message(format!("共享隐藏未能完成，Cuvilo 内容窗口已收起。\n{error}\n\n重试会重新启用并核验保护；关闭保护后，窗口可能出现在共享或录屏中。"))
-        .title("Cuvilo · 共享保护未启用")
+    let english=crate::ui_language::app_english(app);
+    let message=if english{format!("Capture protection could not be enabled. Cuvilo windows were hidden.\n{error}\n\nRetry enables and verifies protection again. If you disable it, Cuvilo may appear in screen sharing or recordings.")}else{format!("共享隐藏未能完成，Cuvilo 内容窗口已收起。\n{error}\n\n重试会重新启用并核验保护；关闭保护后，窗口可能出现在共享或录屏中。")};
+    app.dialog().message(message)
+        .title(if english{"Cuvilo · Capture protection unavailable"}else{"Cuvilo · 共享保护未启用"})
         .kind(MessageDialogKind::Error)
-        .buttons(MessageDialogButtons::YesNoCancelCustom("重试".into(),"关闭保护并继续".into(),"保持收起".into()))
+        .buttons(if english{MessageDialogButtons::YesNoCancelCustom("Retry".into(),"Disable protection and continue".into(),"Keep hidden".into())}else{MessageDialogButtons::YesNoCancelCustom("重试".into(),"关闭保护并继续".into(),"保持收起".into())})
         .show_with_result(move |result| {
             app_copy.state::<Protection>().dialog_open.store(false,Ordering::SeqCst);
             let enabled=recovery_choice(result);
@@ -185,8 +187,8 @@ fn recovery_choice(result: MessageDialogResult) -> Option<bool> {
     match result {
         MessageDialogResult::Yes => Some(true),
         MessageDialogResult::No => Some(false),
-        MessageDialogResult::Custom(text) if text == "重试" => Some(true),
-        MessageDialogResult::Custom(text) if text == "关闭保护并继续" => Some(false),
+        MessageDialogResult::Custom(text) if text == "重试" || text == "Retry" => Some(true),
+        MessageDialogResult::Custom(text) if text == "关闭保护并继续" || text == "Disable protection and continue" => Some(false),
         _ => None,
     }
 }
@@ -286,7 +288,7 @@ pub(crate) async fn present_locked(app: &tauri::AppHandle, label: &str) -> Resul
             "answer",
             tauri::WebviewUrl::App("index.html?window=answer".into()),
         )
-        .title("Cuvilo · 实时答案")
+        .title(if crate::ui_language::app_english(app){"Cuvilo · Live answers"}else{"Cuvilo · 实时答案"})
         .theme(crate::window_theme::requested(&theme))
         .inner_size(360.0, 400.0)
         .transparent(true)

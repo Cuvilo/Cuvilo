@@ -1,3 +1,4 @@
+import {t as tr} from "@/i18n";
 import type { Settings } from "@/types";
 export const shortcutLabels: Record<string,string> = { answer: "立即回答", cancel: "停止生成", toggle: "显示或收起答案窗口", screen: "截图提问", manual: "手动提问" };
 export function shortcutConflicts(shortcuts: Settings["shortcuts"]) {
@@ -6,7 +7,7 @@ export function shortcutConflicts(shortcuts: Settings["shortcuts"]) {
   const entries = Object.entries({...shortcuts,manual:manualShortcut(shortcuts)});
   for (let i=0;i<entries.length;i++) for (let j=i+1;j<entries.length;j++) {
     const [a,x]=entries[i], [b,y]=entries[j];
-    if (x && y && normalize(x) === normalize(y)) errors[a]=errors[b]=`“${shortcutLabels[a]}”与“${shortcutLabels[b]}”使用了相同的快捷键`;
+    if (x && y && normalize(x) === normalize(y)) errors[a]=errors[b]=tr("“{0}”与“{1}”使用了相同的快捷键",tr(shortcutLabels[a]),tr(shortcutLabels[b]));
   }
   return errors;
 }

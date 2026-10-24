@@ -694,6 +694,7 @@ mod stream_tests {
         let (notice_tx, mut notice_rx) = mpsc::unbounded_channel();
         crate::audio::spawn(
             AudioSource {
+                process_capture_supported: None,
                 id: "rate-test".into(),
                 name: "Rate test".into(),
                 kind: "system".into(),

@@ -1,3 +1,4 @@
+import {t as tr} from "./i18n";
 import type { Answer, Transcript } from "./types";
 export function mergeById<T extends { id: string }>(items: T[], item: T): T[] {
   const index = items.findIndex((x) => x.id === item.id);
@@ -34,7 +35,7 @@ export function visibleTranscripts(items: Transcript[]): Transcript[] {
   });
 }
 export function transcriptLabel(t: Transcript) {
-  return t.source === "meeting" ? "会议" : "本人";
+  return tr(t.source === "meeting" ? "会议" : "本人");
 }
 export function milliseconds(value: number | null | undefined) {
   return value == null ? "—" : `${(value / 1000).toFixed(2)}s`;

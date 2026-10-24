@@ -1,3 +1,4 @@
+import {useLocale} from "@/i18n";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { isTauri } from "@tauri-apps/api/core";
@@ -15,6 +16,7 @@ function TooltipProvider({
   delayDuration = 80,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
+  useLocale();
   const keyboard = React.useRef(false);
   const active = React.useRef(true);
   const hoverReady = React.useRef(true);
@@ -75,12 +77,14 @@ function TooltipProvider({
 function Tooltip({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
+  useLocale();
   return <TooltipPrimitive.Root data-slot="tooltip" {...props} />;
 }
 
 function TooltipTrigger({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
+  useLocale();
   return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
 }
 
@@ -90,6 +94,7 @@ function TooltipContent({
   children,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+  useLocale();
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
@@ -114,6 +119,7 @@ function TooltipHint({ label, children, side, enabled = true }: {
   side?: React.ComponentProps<typeof TooltipContent>["side"];
   enabled?: boolean;
 }) {
+  useLocale();
   const [open, setOpen] = React.useState(false);
   const intent = React.useContext(TooltipIntent);
   React.useEffect(() => { if (!enabled) setOpen(false); }, [enabled]);
