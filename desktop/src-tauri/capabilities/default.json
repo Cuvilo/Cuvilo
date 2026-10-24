@@ -1,0 +1,1 @@
+{"identifier":"desktop","description":"Local interview windows","windows":["main","answer"],"permissions":["core:default","core:window:allow-hide","core:window:allow-set-focus","core:window:allow-start-dragging","core:window:allow-set-always-on-top","core:window:allow-is-always-on-top","dialog:allow-open","dialog:allow-save"]}

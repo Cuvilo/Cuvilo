@@ -1,0 +1,18 @@
+// @vitest-environment jsdom
+import {act,renderHook,cleanup} from "@testing-library/react";
+import {beforeEach,afterEach,describe,it,expect,vi} from "vitest";
+import {usePreferenceAutosave} from "./hooks/use-preference-autosave";
+const api=vi.hoisted(()=>({invoke:vi.fn()}));vi.mock("@tauri-apps/api/core",()=>({invoke:api.invoke}));
+beforeEach(()=>{vi.useFakeTimers();api.invoke.mockReset().mockResolvedValue(undefined);});afterEach(()=>{cleanup();vi.useRealTimers();});
+describe("preference autosave",()=>{
+ it("coalesces changes and sends no services or keys",async()=>{const commit=vi.fn();const {result}=renderHook(()=>usePreferenceAutosave(true,commit));act(()=>{result.current.enqueue({fontSize:20});result.current.enqueue({fontSize:22,answerOpacity:80});});await act(async()=>vi.advanceTimersByTimeAsync(350));expect(api.invoke).toHaveBeenCalledTimes(1);expect(api.invoke).toHaveBeenCalledWith("save_preferences",{patch:{fontSize:22,answerOpacity:80}});expect(commit).toHaveBeenCalledWith({fontSize:22,answerOpacity:80});});
+ it("serializes an edit made while an older save is pending",async()=>{let done!:()=>void;api.invoke.mockImplementationOnce(()=>new Promise<void>(resolve=>{done=resolve;})).mockResolvedValue(undefined);const commit=vi.fn();const {result}=renderHook(()=>usePreferenceAutosave(true,commit));act(()=>result.current.enqueue({job:"first"}));await act(async()=>vi.advanceTimersByTimeAsync(350));act(()=>result.current.enqueue({job:"latest"}));await act(async()=>vi.advanceTimersByTimeAsync(350));expect(api.invoke).toHaveBeenCalledTimes(1);await act(async()=>done());expect(api.invoke).toHaveBeenCalledTimes(2);expect(api.invoke.mock.calls[1][1]).toEqual({patch:{job:"latest"}});expect(commit.mock.calls.at(-1)?.[0]).toEqual({job:"latest"});});
+ it("keeps a failed change for explicit retry and does not retry forever",async()=>{api.invoke.mockRejectedValueOnce(new Error("fixture disk failure"));const commit=vi.fn();const {result}=renderHook(()=>usePreferenceAutosave(true,commit));act(()=>result.current.enqueue({answerOpacity:70}));await act(async()=>vi.advanceTimersByTimeAsync(350));expect(result.current.status).toBe("error");expect(commit).not.toHaveBeenCalled();await act(async()=>vi.advanceTimersByTimeAsync(10000));expect(api.invoke).toHaveBeenCalledTimes(1);await act(async()=>result.current.retry());expect(result.current.status).toBe("saved");expect(commit).toHaveBeenCalledWith({answerOpacity:70});});
+ it("cancels an invalid field without dropping other pending preferences and cleans up timers",async()=>{const commit=vi.fn();const {result,unmount}=renderHook(()=>usePreferenceAutosave(true,commit));act(()=>{result.current.enqueue({fontSize:20,job:"retained"});result.current.cancel(["fontSize"]);});await act(async()=>vi.advanceTimersByTimeAsync(350));expect(api.invoke.mock.calls[0][1]).toEqual({patch:{job:"retained"}});act(()=>result.current.enqueue({fontSize:24}));unmount();await act(async()=>vi.advanceTimersByTimeAsync(1000));expect(api.invoke).toHaveBeenCalledTimes(1);});
+ it("flushes immediately and waits for an in-flight write including later edits",async()=>{
+  let done!:()=>void;api.invoke.mockImplementationOnce(()=>new Promise<void>(resolve=>{done=resolve;}));const commit=vi.fn();const {result}=renderHook(()=>usePreferenceAutosave(true,commit));
+  act(()=>result.current.enqueue({job:"first"}));let saved!:Promise<boolean>;act(()=>{saved=result.current.retry();});expect(api.invoke).toHaveBeenCalledTimes(1);
+  act(()=>result.current.enqueue({job:"latest"}));expect(result.current.retry()).toBe(saved);await act(async()=>done());expect(await saved).toBe(true);expect(commit.mock.calls.at(-1)?.[0]).toEqual({job:"latest"});
+ });
+
+});
