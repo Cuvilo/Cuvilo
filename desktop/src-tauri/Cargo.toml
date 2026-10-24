@@ -1,0 +1,52 @@
+[package]
+name = "cuvilo"
+version = "0.1.51"
+description = "Cuvilo real-time interview assistant for Windows"
+authors = ["Cuvilo contributors"]
+edition = "2021"
+[lib]
+name = "cuvilo_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-global-shortcut = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "native-tls", "system-proxy"] }
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
+futures-util = "0.3"
+rusqlite = { version = "0.40.2", features = ["bundled", "backup"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+url = "2"
+urlencoding = "2"
+base64 = "0.22"
+png = "0.18.1"
+flate2 = "1"
+hmac = "0.12"
+sha1 = "0.10"
+sha2 = "0.10"
+md5 = "0.7"
+pdf-extract = "0.12"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+quick-xml = "0.37"
+jieba-rs = "0.7"
+winreg = "0.55"
+windows-core = "0.61"
+windows = { version = "0.61", features = ["Media_Ocr", "Globalization", "Graphics_Imaging", "Security_Cryptography", "Storage_Streams", "Foundation", "Win32_Graphics_Gdi", "Win32_UI_HiDpi", "Win32_UI_Accessibility", "Win32_System_WinRT", "Win32_UI_Input_KeyboardAndMouse", "Win32_Foundation", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging", "Win32_UI_Shell", "Win32_Media_Audio", "Win32_Media_KernelStreaming", "Win32_Security_Credentials", "Win32_System_Com", "Win32_System_Com_StructuredStorage", "Win32_System_Variant", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_System_ProcessStatus", "Win32_System_SystemInformation"] }
+tauri-plugin-updater = { version = "2", default-features = false, features = ["native-tls"] }
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }
+tokio = { version = "1", features = ["test-util"] }
+tempfile = "3"
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = true
