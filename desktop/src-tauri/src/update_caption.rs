@@ -1,5 +1,7 @@
 //! A small owned native button anchored in the existing caption; no client-space toolbar.
+#[cfg(target_os = "windows")]
 use std::cell::{Cell, RefCell};
+#[cfg(target_os = "windows")]
 use windows::{
     core::w,
     Win32::{
@@ -13,8 +15,11 @@ use windows::{
         },
     },
 };
+#[cfg(target_os = "windows")]
 const SUBCLASS_ID: usize = 0x4355_5550;
+#[cfg(target_os = "windows")]
 const ANIMATION_TIMER: usize = 1;
+#[cfg(target_os = "windows")]
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum CaptionMode {
     Download,
@@ -937,6 +942,7 @@ mod native_tests {
 }
 
 #[cfg(test)]
+#[cfg(target_os = "windows")]
 mod language_caption_tests {
     use super::*;
     #[test]
@@ -946,4 +952,27 @@ mod language_caption_tests {
         assert_eq!(caption_label(CaptionMode::Downloading,Some(42),true),"Get 42%");
         assert_eq!(caption_label(CaptionMode::Restart,None,false),"重启更新");
     }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn inherit_capture<T>(_owner: T) -> Result<(), String> {
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn refresh(_raw: *mut std::ffi::c_void, _caption: u32, _text: u32) {}
+
+#[cfg(not(target_os = "windows"))]
+#[tauri::command]
+pub async fn set_update_caption(
+    _window: tauri::WebviewWindow,
+    _app: tauri::AppHandle,
+    _visible: bool,
+    _enabled: bool,
+    _mode: Option<String>,
+    _progress: Option<u32>,
+    _version: Option<String>,
+    _english: Option<bool>,
+) -> Result<(), String> {
+    Ok(())
 }

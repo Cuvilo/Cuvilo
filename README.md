@@ -21,15 +21,22 @@
 
 ## 下载与安装
 
-前往 **[最新正式版](https://github.com/Cuvilo/Cuvilo/releases/latest)**，下载名字以 `x64-setup.exe` 结尾的安装包，运行后按照提示安装。
+前往 **[最新正式版](https://github.com/Cuvilo/Cuvilo/releases/latest)**，根据操作系统下载对应的安装包：
 
 | 文件 | 用途 |
 | --- | --- |
 | `Cuvilo_<版本>_x64-setup.exe` | **Windows x64 安装包，普通用户下载这个** |
+| `Cuvilo_<版本>_universal.dmg` | **macOS 通用安装包（支持 Apple Silicon M 系列与 Intel 芯片）** |
 | `.sig`、`latest.json` | 软件自动更新使用的签名与清单，无需手动下载 |
 | GitHub 自动提供的 `Source code` | 对应标签的源码快照，不是可运行的安装包 |
 
-当前提供 Windows x64 版本，建议在 Windows 11 上使用。macOS、Linux、Windows ARM64 暂无原生发行版。指定应用声音采集允许 Windows 10 2004（build 19041）及以上尝试，并以实际接口激活结果为准；系统补丁、目标应用或接口限制仍可能导致失败，此时请显式选择系统声音。已发布的 0.1.51 使用较严格的版本判断，Windows 10 用户暂可先用系统声音；兼容改进将在下一版提供。具体兼容范围见[使用指南](docs/GETTING_STARTED.md)。
+> **macOS 首次运行提示**：
+> 开源版本未购买商业公证证书。将 App 拖入「应用程序」后，如遇提示“无法验证开发者”或“已损坏”，可按住 `Control` 键右键点击应用图标选择「打开」，或在系统自带「终端」中执行以下命令移除下载隔离：
+> ```bash
+> xattr -cr /Applications/Cuvilo.app
+> ```
+
+当前支持 Windows x64 与 macOS（Universal 通用架构）。Windows 建议在 Windows 11 上使用；指定应用声音采集允许 Windows 10 2004（build 19041）及以上尝试，并以实际接口激活结果为准；系统补丁、目标应用或接口限制仍可能导致失败，此时请显式选择系统声音。已发布的 0.1.51 使用较严格的版本判断，Windows 10 用户暂可先用系统声音；兼容改进将在下一版提供。具体兼容范围见[使用指南](docs/GETTING_STARTED.md)。
 
 ## 能做什么
 

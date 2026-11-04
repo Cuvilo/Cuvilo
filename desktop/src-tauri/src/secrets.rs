@@ -1,11 +1,18 @@
 use crate::types::Secret;
 use anyhow::{Context, Result};
+
+#[cfg(target_os = "windows")]
 use windows::core::{PCWSTR, PWSTR};
+#[cfg(target_os = "windows")]
 use windows::Win32::Security::Credentials::*;
+
 // Keep this legacy credential namespace stable when changing the product name.
+#[cfg(target_os = "windows")]
 fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(Some(0)).collect()
 }
+
+#[cfg(target_os = "windows")]
 pub fn save(id: &str, secret: &Secret) -> Result<()> {
     let mut target = wide(&format!("InterviewCopilot/{id}"));
     let mut user = wide("InterviewCopilot");
@@ -22,6 +29,8 @@ pub fn save(id: &str, secret: &Secret) -> Result<()> {
     unsafe { CredWriteW(&c, 0).context("无法保存到 Windows 凭据管理器")? };
     Ok(())
 }
+
+#[cfg(target_os = "windows")]
 pub fn read_optional(id: &str) -> Result<Option<Secret>> {
     let target = wide(&format!("InterviewCopilot/{id}"));
     let mut ptr = std::ptr::null_mut();
@@ -41,14 +50,67 @@ pub fn read_optional(id: &str) -> Result<Option<Secret>> {
         Ok(Some(result?))
     }
 }
-pub fn read(id: &str) -> Result<Secret> {
-    read_optional(id)?.context("尚未配置服务密钥，请在设置中保存")
-}
+
+#[cfg(target_os = "windows")]
 pub fn remove(id:&str)->Result<()>{
  let target=wide(&format!("InterviewCopilot/{id}"));
  match unsafe{CredDeleteW(PCWSTR(target.as_ptr()),CRED_TYPE_GENERIC,None)}{
   Ok(())=>Ok(()),Err(e)if e.code()==windows::core::HRESULT::from_win32(1168)=>Ok(()),Err(e)=>Err(e).context("无法移除服务密钥")
  }
+}
+
+#[cfg(target_os = "macos")]
+pub fn save(id: &str, secret: &Secret) -> Result<()> {
+    let blob = serde_json::to_string(secret)?;
+    let status = std::process::Command::new("/usr/bin/security")
+        .args(["add-generic-password", "-U", "-s", "InterviewCopilot", "-a", id, "-w", &blob])
+        .status()
+        .context("无法执行 macOS 钥匙串命令")?;
+    if !status.success() {
+        anyhow::bail!("无法保存到 macOS 钥匙串");
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+pub fn read_optional(id: &str) -> Result<Option<Secret>> {
+    let output = std::process::Command::new("/usr/bin/security")
+        .args(["find-generic-password", "-s", "InterviewCopilot", "-a", id, "-w"])
+        .output()
+        .context("无法读取 macOS 钥匙串")?;
+    if !output.status.success() {
+        return Ok(None);
+    }
+    let text = String::from_utf8(output.stdout).context("钥匙串数据编码无效")?;
+    let secret: Secret = serde_json::from_str(text.trim()).context("无法解析密钥数据")?;
+    Ok(Some(secret))
+}
+
+#[cfg(target_os = "macos")]
+pub fn remove(id: &str) -> Result<()> {
+    let _ = std::process::Command::new("/usr/bin/security")
+        .args(["delete-generic-password", "-s", "InterviewCopilot", "-a", id])
+        .status();
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+pub fn save(_id: &str, _secret: &Secret) -> Result<()> {
+    anyhow::bail!("当前平台未配置密钥安全存储")
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+pub fn read_optional(_id: &str) -> Result<Option<Secret>> {
+    Ok(None)
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+pub fn remove(_id: &str) -> Result<()> {
+    Ok(())
+}
+
+pub fn read(id: &str) -> Result<Secret> {
+    read_optional(id)?.context("尚未配置服务密钥，请在设置中保存")
 }
 pub fn configured(id: &str) -> bool {
     read(id)
@@ -68,7 +130,7 @@ pub fn redact(message: &str, secret: &Secret) -> String {
     safe
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "windows"))]
 mod tests {
     use super::*;
     #[test]

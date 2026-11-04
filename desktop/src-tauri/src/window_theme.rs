@@ -2,6 +2,8 @@ use tauri::Manager;
 pub fn requested(preference:&str)->Option<tauri::Theme>{match preference{"dark"=>Some(tauri::Theme::Dark),"system"=>None,_=>Some(tauri::Theme::Light)}}
 // Match Tao's Windows app-theme resolution without consulting a forced window.
 fn resolved_system_dark(light:Option<u32>,high_contrast:bool)->bool{!high_contrast&&light==Some(0)}
+
+#[cfg(target_os="windows")]
 pub fn system_dark()->bool{
  use winreg::{RegKey,enums::HKEY_CURRENT_USER};
  use windows::Win32::UI::WindowsAndMessaging::{SystemParametersInfoW,SPI_GETHIGHCONTRAST};
@@ -11,6 +13,12 @@ pub fn system_dark()->bool{
  let light=RegKey::predef(HKEY_CURRENT_USER).open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize").ok().and_then(|key|key.get_value::<u32,_>("AppsUseLightTheme").ok());
  resolved_system_dark(light,high_contrast)
 }
+
+#[cfg(not(target_os="windows"))]
+pub fn system_dark()->bool{
+ false
+}
+
 fn effective_dark(preference:&str)->bool{match preference{"dark"=>true,"light"=>false,_=>system_dark()}}
 static CAPTION_PREVIEW:std::sync::atomic::AtomicU64=std::sync::atomic::AtomicU64::new(0);
 struct CaptionPreview(u64);
@@ -18,6 +26,7 @@ impl CaptionPreview{fn new(ticket:u64)->Self{CAPTION_PREVIEW.store(ticket,std::s
 impl Drop for CaptionPreview{fn drop(&mut self){let _=CAPTION_PREVIEW.compare_exchange(self.0,0,std::sync::atomic::Ordering::SeqCst,std::sync::atomic::Ordering::SeqCst);}}
 pub fn refresh_caption(window:&tauri::WebviewWindow){
  if window.label()!="main"||CAPTION_PREVIEW.load(std::sync::atomic::Ordering::SeqCst)!=0{return;}
+ #[cfg(target_os="windows")]
  if let Ok(hwnd)=window.hwnd(){crate::window_style::apply_theme(hwnd.0,window.theme().ok()==Some(tauri::Theme::Dark));}
 }
 fn surface_color(window:&tauri::WebviewWindow,dark:bool)->Result<(),String>{
@@ -62,11 +71,17 @@ pub fn fade_progress(linear:f64)->f64{
  for _ in 0..18{let t=(low+high)/2.;let a=1.-t;let estimate=3.*a*a*t*0.2+t*t*t;if estimate<x{low=t;}else{high=t;}}
  let t=(low+high)/2.;3.*(1.-t)*t*t+t*t*t
 }
+#[cfg(target_os="windows")]
 pub fn caption_values(window:&tauri::WebviewWindow)->(u32,u32){
  use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute,DWMWA_CAPTION_COLOR,DWMWA_TEXT_COLOR};
  let dark=window.theme().ok()==Some(tauri::Theme::Dark);let(mut caption,mut text)=if dark{(24u32,229u32)}else{(245u32,23u32)};
  if let Ok(hwnd)=window.hwnd(){unsafe{let mut value=0u32;if DwmGetWindowAttribute(windows::Win32::Foundation::HWND(hwnd.0),DWMWA_CAPTION_COLOR,&mut value as *mut _ as _,4).is_ok()&&value<=0xffffff{caption=value&255;}if DwmGetWindowAttribute(windows::Win32::Foundation::HWND(hwnd.0),DWMWA_TEXT_COLOR,&mut value as *mut _ as _,4).is_ok()&&value<=0xffffff{text=value&255;}}}
  (caption,text)
+}
+#[cfg(not(target_os="windows"))]
+pub fn caption_values(window:&tauri::WebviewWindow)->(u32,u32){
+ let dark=window.theme().ok()==Some(tauri::Theme::Dark);
+ if dark{(24,229)}else{(245,23)}
 }
 pub async fn preview(app:&tauri::AppHandle,preference:String,resolved_dark:Option<bool>,started:Option<f64>)->Result<(),String>{
  let animated=started.is_some();

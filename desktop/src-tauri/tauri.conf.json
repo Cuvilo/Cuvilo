@@ -31,9 +31,7 @@
   "bundle": {
     "active": true,
     "useLocalToolsDir": true,
-    "targets": [
-      "nsis"
-    ],
+    "targets": "all",
     "category": "Productivity",
     "shortDescription": "实时会议转写与面试参考答案",
     "windows": {
@@ -45,7 +43,15 @@
         ]
       }
     },
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.15"
+    },
     "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
       "icons/icon.ico",
       "icons/icon.png"
     ],

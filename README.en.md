@@ -21,15 +21,22 @@
 
 ## Download and install
 
-Open the **[latest release](https://github.com/Cuvilo/Cuvilo/releases/latest)** and download the file ending in `x64-setup.exe`. Run it and follow the installer.
+Open the **[latest release](https://github.com/Cuvilo/Cuvilo/releases/latest)** and download the installer for your operating system:
 
 | File | Purpose |
 | --- | --- |
 | `Cuvilo_<version>_x64-setup.exe` | **Windows x64 installer. Download this to use Cuvilo.** |
+| `Cuvilo_<version>_universal.dmg` | **macOS Universal bundle (supports both Apple Silicon M-series and Intel Macs).** |
 | `.sig` and `latest.json` | Signature and metadata used by automatic updates. No manual download needed. |
 | `Source code` | The tagged source snapshot for developers; not a runnable installer. |
 
-Windows x64 is currently supported; Windows 11 is recommended. There are no native macOS, Linux or Windows ARM64 releases. **Windows 10 2004 (build 19041) and later are allowed to try per-application capture, subject to actual API activation.** Keep Windows updated. If activation fails, explicitly choose system audio. The published 0.1.51 release uses an overly strict version check; Windows 10 users can use system audio until the compatibility fix ships in the next release. See the [compatibility guide](docs/GETTING_STARTED.en.md#3-test-meeting-audio).
+> **macOS first launch note**:
+> Community builds are distributed without paid Apple Developer notarization. If macOS shows "cannot verify developer" or "application is damaged", drag the App into `/Applications`, then Control-click the icon and choose "Open", or run this command in Terminal to remove the quarantine flag:
+> ```bash
+> xattr -cr /Applications/Cuvilo.app
+> ```
+
+Windows x64 and macOS (Universal binary) are supported. Windows 11 is recommended; **Windows 10 2004 (build 19041) and later are allowed to try per-application capture, subject to actual API activation.** Keep Windows updated. If activation fails, explicitly choose system audio. The published 0.1.51 release uses an overly strict version check; Windows 10 users can use system audio until the compatibility fix ships in the next release. See the [compatibility guide](docs/GETTING_STARTED.en.md#3-test-meeting-audio).
 
 ## Features
 

@@ -4,7 +4,12 @@ use anyhow::{ensure, Context, Result};
 use serde::Serialize;
 use std::sync::{Arc, atomic::{AtomicBool,Ordering}};
 use tauri::Manager;
+#[cfg(target_os = "windows")]
 #[path="screen_native.rs"] mod native;
+#[cfg(target_os = "macos")]
+#[path="screen_macos.rs"] mod native;
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+#[path="screen_fallback.rs"] mod native;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all="camelCase")]

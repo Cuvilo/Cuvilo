@@ -9,9 +9,17 @@ pub fn run() -> Result<bool> {
         let id = args
             .get(index + 1)
             .ok_or_else(|| anyhow::anyhow!("请指定服务 ID"))?;
-        let db_path = std::path::PathBuf::from(std::env::var("APPDATA")?)
-            .join("local.interview.copilot")
-            .join("interview.sqlite3");
+        let app_dir = match std::env::var("APPDATA") {
+            Ok(val) => std::path::PathBuf::from(val).join("local.interview.copilot"),
+            Err(_) => match std::env::var("HOME") {
+                Ok(home) => std::path::PathBuf::from(home)
+                    .join("Library")
+                    .join("Application Support")
+                    .join("local.interview.copilot"),
+                Err(_) => anyhow::bail!("未找到数据目录"),
+            },
+        };
+        let db_path = app_dir.join("interview.sqlite3");
         let db = Database::open(&db_path)?;
         let settings = db.settings()?;
         let p = settings

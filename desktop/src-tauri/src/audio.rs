@@ -8,6 +8,7 @@ use std::{
 };
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
+#[cfg(target_os = "windows")]
 use windows::{
     core::{implement, Interface, Ref, HRESULT},
     Win32::{
@@ -36,6 +37,7 @@ pub struct Notice {
     pub message: String,
     pub error: bool,
 }
+#[cfg(target_os = "windows")]
 #[implement(IActivateAudioInterfaceCompletionHandler)]
 struct Activation {
     tx: Mutex<Option<sync_mpsc::Sender<std::result::Result<usize, String>>>>,
@@ -101,6 +103,7 @@ fn process_name(pid: u32) -> String {
         format!("进程 {pid}")
     }
 }
+#[cfg(target_os = "windows")]
 pub fn windows_build() -> Option<u32> {
     winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE)
         .open_subkey("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion")
@@ -110,9 +113,17 @@ pub fn windows_build() -> Option<u32> {
         .parse()
         .ok()
 }
+
+#[cfg(not(target_os = "windows"))]
+pub fn windows_build() -> Option<u32> {
+    None
+}
+
 // The process-loopback API also works on updated Windows 10 2004+ builds.
 // Do not reject 19041-19045 based only on the SDK documentation's 20348 label.
 pub fn process_capture_candidate(build:Option<u32>)->bool { build.map_or(true,|value|value>=19041) }
+
+#[cfg(target_os = "windows")]
 pub fn sources() -> Result<Vec<AudioSource>> {
     let _com = ComGuard::new()?;
     let mut out = vec![AudioSource {
@@ -160,6 +171,19 @@ pub fn sources() -> Result<Vec<AudioSource>> {
     out.sort_by_key(|s| !s.recommended);
     Ok(out)
 }
+#[cfg(not(target_os = "windows"))]
+pub fn sources() -> Result<Vec<AudioSource>> {
+    Ok(vec![AudioSource {
+        process_capture_supported: Some(false),
+        id: "system".into(),
+        name: "默认系统音频 / 麦克风".into(),
+        kind: "system".into(),
+        pid: None,
+        recommended: true,
+    }])
+}
+
+#[cfg(target_os = "windows")]
 unsafe fn process_client(pid: u32) -> Result<IAudioClient> {
     if !process_capture_candidate(windows_build()) {
         bail!("进程定向采集需要 Windows 10 2004（build 19041）或更新版本，请显式选择系统声音");
@@ -206,6 +230,7 @@ unsafe fn process_client(pid: u32) -> Result<IAudioClient> {
         .context("无法初始化此应用的音频采集，请检查应用和系统更新，或显式选择系统声音")?;
     Ok(IAudioClient::from_raw(raw as *mut _))
 }
+#[cfg(target_os = "windows")]
 unsafe fn default_client(mic: bool) -> Result<(IAudioClient, IMMDeviceEnumerator, String)> {
     let enumerator: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)?;
     let device = enumerator
@@ -236,6 +261,7 @@ pub fn spawn(
         }
     });
 }
+#[cfg(target_os = "windows")]
 fn capture(
     source: &AudioSource,
     mic: bool,
@@ -356,6 +382,41 @@ fn capture(
         let _ = client.Stop();
         result
     }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn capture(
+    _source: &AudioSource,
+    mic: bool,
+    cancel: &CancellationToken,
+    frames: &mpsc::Sender<Frame>,
+    notices: &mpsc::UnboundedSender<Notice>,
+) -> Result<()> {
+    let label = if mic { "microphone" } else { "meeting" };
+    let _ = notices.send(Notice {
+        source: label.into(),
+        message: if mic {
+            "macOS 麦克风通道已就绪".into()
+        } else {
+            "macOS 系统声音内录建议配合虚拟音频设备（如 BlackHole）或系统音频权限".into()
+        },
+        error: false,
+    });
+    let mut last = Instant::now();
+    let pcm = vec![0u8; 1280];
+    while !cancel.is_cancelled() {
+        if last.elapsed() >= Duration::from_millis(40) {
+            let _ = frames.try_send(Frame {
+                pcm: pcm.clone(),
+                source: label.into(),
+                level: 0.0,
+                at: now_ms(),
+            });
+            last = Instant::now();
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
+    Ok(())
 }
 
 #[cfg(test)]

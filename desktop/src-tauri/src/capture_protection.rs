@@ -94,7 +94,14 @@ fn native(window: &tauri::WebviewWindow, enabled: bool) -> Result<u32, String> {
         if window.label()=="main"{crate::update_caption::inherit_capture(native)?;}
         Ok(affinity)
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        window
+            .set_content_protected(enabled)
+            .map_err(|e| format!("macOS 无法设置窗口共享保护：{e}"))?;
+        Ok(if enabled { 0x11 } else { 0 })
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         let _ = window;
         if enabled {

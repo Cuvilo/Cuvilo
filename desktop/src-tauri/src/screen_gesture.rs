@@ -1,10 +1,19 @@
 //! Optional Shift + double-click. Hook callbacks never block on app state or perform capture.
+#[cfg(target_os = "windows")]
 use crate::{core::Core,screen_capture};
+#[cfg(target_os = "windows")]
 use std::{cell::Cell,sync::{Arc,OnceLock},time::Instant};
+#[cfg(target_os = "windows")]
 use tauri::Manager;
+#[cfg(target_os = "windows")]
 use windows::Win32::{Foundation::*,UI::{WindowsAndMessaging::*,Input::KeyboardAndMouse::*}};
+
+#[cfg(target_os = "windows")]
 static APP:OnceLock<tauri::AppHandle>=OnceLock::new();
+#[cfg(target_os = "windows")]
 thread_local!{static LAST:Cell<Option<(Instant,i32,i32)>>=const{Cell::new(None)};static SWALLOW:Cell<bool>=const{Cell::new(false)};}
+
+#[cfg(target_os = "windows")]
 unsafe extern "system" fn hook(code:i32,w:WPARAM,l:LPARAM)->LRESULT{
  if code>=0 {
   if w.0==WM_LBUTTONUP as usize && SWALLOW.with(|s|s.replace(false)){return LRESULT(1)}
@@ -24,7 +33,11 @@ unsafe extern "system" fn hook(code:i32,w:WPARAM,l:LPARAM)->LRESULT{
  }
  CallNextHookEx(None,code,w,l)
 }
+#[cfg(target_os = "windows")]
 pub fn install(app:tauri::AppHandle){
  if APP.set(app).is_err(){return;}
  std::thread::spawn(||unsafe{let Ok(handle)=SetWindowsHookExW(WH_MOUSE_LL,Some(hook),None,0)else{if let Some(app)=APP.get(){app.state::<Arc<Core>>().warnings.lock().unwrap().push("鼠标截图手势不可用，请使用快捷键或菜单截图".into());}return;};let mut message=MSG::default();while GetMessageW(&mut message,None,0,0).0>0 {let _=TranslateMessage(&message);DispatchMessageW(&message);}let _=UnhookWindowsHookEx(handle);});
 }
+
+#[cfg(not(target_os = "windows"))]
+pub fn install(_app:tauri::AppHandle){}
