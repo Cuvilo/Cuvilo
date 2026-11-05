@@ -68,18 +68,22 @@ impl IActivateAudioInterfaceCompletionHandler_Impl for Activation_Impl {
         }
     }
 }
+#[cfg(target_os = "windows")]
 struct ComGuard;
+#[cfg(target_os = "windows")]
 impl ComGuard {
     fn new() -> Result<Self> {
         unsafe { CoInitializeEx(None, COINIT_MULTITHREADED).ok()? };
         Ok(Self)
     }
 }
+#[cfg(target_os = "windows")]
 impl Drop for ComGuard {
     fn drop(&mut self) {
         unsafe { CoUninitialize() }
     }
 }
+#[cfg(target_os = "windows")]
 fn process_name(pid: u32) -> String {
     unsafe {
         if let Ok(handle) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) {

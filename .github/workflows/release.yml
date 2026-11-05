@@ -89,7 +89,7 @@ jobs:
       - name: Frontend tests
         run: npm test
       - name: Native tests
-        run: cargo test --manifest-path src-tauri/Cargo.toml --locked --lib
+        run: cargo test --manifest-path src-tauri/Cargo.toml --locked --lib -- --test-threads=1
       - name: Build signed macOS bundle
         uses: tauri-apps/tauri-action@v1
         env:

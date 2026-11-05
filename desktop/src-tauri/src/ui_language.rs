@@ -2,9 +2,15 @@ use std::sync::Arc;
 use tauri::{menu::MenuItem, Manager};
 
 pub struct TrayLabels { pub show: MenuItem<tauri::Wry>, pub quit: MenuItem<tauri::Wry> }
+#[cfg(target_os = "windows")]
 pub fn system_language() -> &'static str {
     let language = unsafe { windows::Win32::Globalization::GetUserDefaultUILanguage() };
     if language & 0x03ff == 0x04 { "zh-CN" } else { "en" }
+}
+#[cfg(not(target_os = "windows"))]
+pub fn system_language() -> &'static str {
+    let lang = std::env::var("LANG").or_else(|_| std::env::var("LC_ALL")).unwrap_or_default();
+    if lang.to_lowercase().starts_with("zh") { "zh-CN" } else { "en" }
 }
 pub fn english(preference: &str) -> bool {
     preference == "en" || (preference == "system" && system_language() == "en")

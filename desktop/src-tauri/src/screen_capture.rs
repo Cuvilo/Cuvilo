@@ -232,7 +232,7 @@ pub fn image(core:&Core,id:&str)->Result<String>{use base64::Engine;let state=co
  #[test]fn old_settings_preserve_custom_shortcuts_and_gain_safe_capture_defaults(){let mut value=serde_json::to_value(Settings::default()).unwrap();value.as_object_mut().unwrap().remove("screenCapture");value["shortcuts"].as_object_mut().unwrap().remove("screen");value["shortcuts"]["answer"]=serde_json::json!("Ctrl+Alt+Backspace");let settings:Settings=serde_json::from_value(value).unwrap();assert_eq!(settings.shortcuts.answer,"Ctrl+Alt+Backspace");assert_eq!(settings.shortcuts.screen,"Ctrl+Shift+S");assert!(!settings.screen_capture.shift_double_click);assert!(!settings.screen_capture.confirm_before_answer);}
 }
 
-#[cfg(test)] #[path="capture_restore_regression.rs"] mod restore_regression;
+#[cfg(all(test, target_os = "windows"))] #[path="capture_restore_regression.rs"] mod restore_regression;
 
 #[cfg(test)] mod lock_regressions {
  use super::*;

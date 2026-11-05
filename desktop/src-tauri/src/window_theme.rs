@@ -45,6 +45,7 @@ pub fn apply_window(window:&tauri::WebviewWindow,preference:&str)->Result<(),Str
   // set_theme queues a runtime message; window.theme() may still be the old
   // palette here. Paint the resolved target, rather than flashing that cache.
   surface_color(window,dark)?;
+  #[cfg(target_os = "windows")]
   if window.label()=="main"{if let Ok(hwnd)=window.hwnd(){crate::window_style::apply_theme(hwnd.0,dark);}}
   Ok(())
  })();
@@ -102,6 +103,7 @@ pub async fn preview(app:&tauri::AppHandle,preference:String,resolved_dark:Optio
     // Sample the clock on the UI thread; queued IPC/UI work must not cost a frame.
     let fraction=((crate::types::now_ms() as f64-start)/180.).clamp(0.,1.);
     let progress=fade_progress(fraction);
+    #[cfg(target_os = "windows")]
     if preview_current(ticket){if let Some(window)=app.get_webview_window("main"){if let Ok(hwnd)=window.hwnd(){let blend=|a:u32,b:u32|(a as f64+(b as f64-a as f64)*progress).round() as u32;crate::window_style::apply_neutral(hwnd.0,blend(from.0,to.0),blend(from.1,to.1));}}}Ok(fraction>=1.)
    }).await?;
    // apply_neutral already waits for DWM composition. A Windows 1ms

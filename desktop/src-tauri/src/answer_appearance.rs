@@ -39,7 +39,7 @@ pub fn existing(app:&tauri::AppHandle,opacity:u32)->Result<(),String>{if let Som
  }}
 }
 
-#[cfg(test)] #[path="opacity_visual_regression.rs"] mod visual_regression;
+#[cfg(all(test, target_os = "windows"))] #[path="opacity_visual_regression.rs"] mod visual_regression;
 
 #[cfg(all(test,target_os="windows"))]mod style_regressions{
  #[test]fn style_refresh_keeps_alpha_and_protection_and_destroy_removes_guard(){unsafe{

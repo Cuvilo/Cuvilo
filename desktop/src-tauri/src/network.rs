@@ -6,11 +6,13 @@ use tokio::{
     net::TcpStream,
 };
 use url::Url;
+#[cfg(target_os = "windows")]
 use winreg::{enums::HKEY_CURRENT_USER, RegKey};
 pub trait SocketIo: AsyncRead + AsyncWrite + Unpin + Send {}
 impl<T: AsyncRead + AsyncWrite + Unpin + Send> SocketIo for T {}
 pub type Ws =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<Box<dyn SocketIo>>>;
+#[cfg(target_os = "windows")]
 pub fn system_proxy() -> Option<String> {
     let key = RegKey::predef(HKEY_CURRENT_USER)
         .open_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings")
@@ -32,6 +34,14 @@ pub fn system_proxy() -> Option<String> {
     } else {
         format!("http://{value}")
     })
+}
+#[cfg(not(target_os = "windows"))]
+pub fn system_proxy() -> Option<String> {
+    std::env::var("HTTP_PROXY")
+        .or_else(|_| std::env::var("http_proxy"))
+        .or_else(|_| std::env::var("ALL_PROXY"))
+        .or_else(|_| std::env::var("all_proxy"))
+        .ok()
 }
 pub fn client(n: &Network) -> Result<reqwest::Client> { client_with_redirects(n,true) }
 pub fn client_no_redirects(n: &Network) -> Result<reqwest::Client> { client_with_redirects(n,false) }

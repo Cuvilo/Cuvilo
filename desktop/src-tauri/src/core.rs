@@ -614,7 +614,7 @@ impl Core {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "windows"))]
 mod native_live_tests {
     use super::*;
     use std::os::windows::process::CommandExt;
@@ -787,13 +787,7 @@ mod manual_answer_regressions {
     struct FixtureCredential(String);
     impl Drop for FixtureCredential {
         fn drop(&mut self) {
-            let target: Vec<u16> = format!("InterviewCopilot/{}", self.0).encode_utf16().chain(Some(0)).collect();
-            unsafe {
-                let _ = windows::Win32::Security::Credentials::CredDeleteW(
-                    windows::core::PCWSTR(target.as_ptr()),
-                    windows::Win32::Security::Credentials::CRED_TYPE_GENERIC, None,
-                );
-            }
+            let _ = crate::secrets::remove(&self.0);
         }
     }
 

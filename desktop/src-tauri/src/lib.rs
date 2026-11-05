@@ -481,6 +481,7 @@ pub fn run() {
         .plugin(plugin)
         .setup(|app| {
             if let Some(main) = app.get_webview_window("main") {
+                #[cfg(target_os = "windows")]
                 if let Ok(hwnd) = main.hwnd() { window_style::apply(hwnd.0); }
             }
             let path = app.path().app_data_dir()?;
@@ -603,7 +604,7 @@ pub fn run() {
  #[test] fn saved_reading_size_is_validated_at_the_native_boundary(){let mut s=Settings::default();s.font_size=31;assert!(validate_settings(&s,&[]).is_err());s.font_size=13;assert!(validate_settings(&s,&[]).is_err());s.font_size=30;assert!(validate_settings(&s,&[]).is_ok());}
 }
 
-#[cfg(test)]mod theme_sync_regression;
+#[cfg(all(test, target_os = "windows"))]mod theme_sync_regression;
 
 #[cfg(test)]mod builtin_ocr_tests{
  use super::*;

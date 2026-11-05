@@ -11,10 +11,21 @@ pub fn destination(help:&str)->Option<&'static str>{match help{
  "tencent"=>Some("https://console.cloud.tencent.com/cam/capi"),
  _=>None,
 }}
+#[cfg(target_os = "windows")]
 pub fn open(help:&str)->Result<(),String>{
  let url=destination(help).ok_or("没有此服务的官方帮助入口")?;
  let target:Vec<u16>=url.encode_utf16().chain(Some(0)).collect();
  let result=unsafe{windows::Win32::UI::Shell::ShellExecuteW(None,windows::core::w!("open"),windows::core::PCWSTR(target.as_ptr()),None,None,windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL)};
  if result.0 as isize>32{Ok(())}else{Err("无法打开浏览器，请稍后重试".into())}
+}
+#[cfg(target_os = "macos")]
+pub fn open(help:&str)->Result<(),String>{
+ let url=destination(help).ok_or("没有此服务的官方帮助入口")?;
+ std::process::Command::new("/usr/bin/open").arg(url).spawn().map(|_|()).map_err(|e|format!("无法打开浏览器：{e}"))
+}
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+pub fn open(help:&str)->Result<(),String>{
+ let url=destination(help).ok_or("没有此服务的官方帮助入口")?;
+ std::process::Command::new("xdg-open").arg(url).spawn().map(|_|()).map_err(|e|format!("无法打开浏览器：{e}"))
 }
 #[cfg(test)]mod tests{use super::*;#[test]fn only_known_official_help_destinations_are_accepted(){for name in ["deepseek","xfyun","qwen","siliconflow","tencent","volcengine","youdao","ocr-space"]{assert!(destination(name).unwrap().starts_with("https://"));}for name in ["https://evil.invalid","file:///x","cmd.exe",""]{assert!(destination(name).is_none());}}}
