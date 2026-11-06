@@ -5,65 +5,66 @@ import CoreMedia
 import ScreenCaptureKit
 #endif
 
-/// Target output audio format: 16kHz, 16-bit signed integer, mono PCM
-let TARGET_SAMPLE_RATE: Double = 16000.0
+enum AudioUtils {
+    static let targetSampleRate: Double = 16000.0
 
-func downsampleFloatTo16kMono(
-    samples: UnsafePointer<Float>,
-    frameCount: Int,
-    channelCount: Int,
-    sourceRate: Double
-) -> Data {
-    guard frameCount > 0 && channelCount > 0 else { return Data() }
-    
-    // Downmix multi-channel to mono
-    var monoFloats = [Float](repeating: 0, count: frameCount)
-    if channelCount == 1 {
-        for i in 0..<frameCount {
-            monoFloats[i] = samples[i]
-        }
-    } else {
-        let inv = 1.0 / Float(channelCount)
-        for i in 0..<frameCount {
-            var sum: Float = 0
-            for c in 0..<channelCount {
-                sum += samples[i * channelCount + c]
+    static func downsampleFloatTo16kMono(
+        samples: UnsafePointer<Float>,
+        frameCount: Int,
+        channelCount: Int,
+        sourceRate: Double
+    ) -> Data {
+        guard frameCount > 0 && channelCount > 0 else { return Data() }
+        
+        // Downmix multi-channel to mono
+        var monoFloats = [Float](repeating: 0, count: frameCount)
+        if channelCount == 1 {
+            for i in 0..<frameCount {
+                monoFloats[i] = samples[i]
             }
-            monoFloats[i] = sum * inv
+        } else {
+            let inv = 1.0 / Float(channelCount)
+            for i in 0..<frameCount {
+                var sum: Float = 0
+                for c in 0..<channelCount {
+                    sum += samples[i * channelCount + c]
+                }
+                monoFloats[i] = sum * inv
+            }
         }
-    }
-    
-    // Resample if source sample rate is different from 16kHz
-    let outCount: Int
-    let resampledFloats: [Float]
-    if abs(sourceRate - TARGET_SAMPLE_RATE) > 10.0 && sourceRate > 1000.0 {
-        let step = sourceRate / TARGET_SAMPLE_RATE
-        outCount = Int(Double(frameCount) * (TARGET_SAMPLE_RATE / sourceRate))
-        var temp = [Float](repeating: 0, count: outCount)
-        for i in 0..<outCount {
-            let srcPos = Double(i) * step
-            let idx0 = Int(srcPos)
-            let frac = Float(srcPos - Double(idx0))
-            let s0 = monoFloats[min(idx0, frameCount - 1)]
-            let s1 = monoFloats[min(idx0 + 1, frameCount - 1)]
-            temp[i] = s0 * (1.0 - frac) + s1 * frac
+        
+        // Resample if source sample rate is different from 16kHz
+        let outCount: Int
+        let resampledFloats: [Float]
+        if abs(sourceRate - targetSampleRate) > 10.0 && sourceRate > 1000.0 {
+            let step = sourceRate / targetSampleRate
+            outCount = Int(Double(frameCount) * (targetSampleRate / sourceRate))
+            var temp = [Float](repeating: 0, count: outCount)
+            for i in 0..<outCount {
+                let srcPos = Double(i) * step
+                let idx0 = Int(srcPos)
+                let frac = Float(srcPos - Double(idx0))
+                let s0 = monoFloats[min(idx0, frameCount - 1)]
+                let s1 = monoFloats[min(idx0 + 1, frameCount - 1)]
+                temp[i] = s0 * (1.0 - frac) + s1 * frac
+            }
+            resampledFloats = temp
+        } else {
+            outCount = frameCount
+            resampledFloats = monoFloats
         }
-        resampledFloats = temp
-    } else {
-        outCount = frameCount
-        resampledFloats = monoFloats
-    }
-    
-    // Convert Float32 (-1.0...1.0) to Int16
-    var int16Data = Data(count: outCount * 2)
-    int16Data.withUnsafeMutableBytes { (rawBuf: UnsafeMutableRawBufferPointer) in
-        let ptr = rawBuf.bindMemory(to: Int16.self).baseAddress!
-        for i in 0..<outCount {
-            let val = max(-1.0, min(1.0, resampledFloats[i]))
-            ptr[i] = Int16(val * 32767.0)
+        
+        // Convert Float32 (-1.0...1.0) to Int16
+        var int16Data = Data(count: outCount * 2)
+        int16Data.withUnsafeMutableBytes { (rawBuf: UnsafeMutableRawBufferPointer) in
+            let ptr = rawBuf.bindMemory(to: Int16.self).baseAddress!
+            for i in 0..<outCount {
+                let val = max(-1.0, min(1.0, resampledFloats[i]))
+                ptr[i] = Int16(val * 32767.0)
+            }
         }
+        return int16Data
     }
-    return int16Data
 }
 
 #if canImport(ScreenCaptureKit)
@@ -84,7 +85,7 @@ final class SystemAudioRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
         config.capturesAudio = true
         config.excludesCurrentProcessAudio = true
         config.channelCount = 1
-        config.sampleRate = Int(TARGET_SAMPLE_RATE)
+        config.sampleRate = Int(AudioUtils.targetSampleRate)
         
         // Minimal visual capture overhead
         config.width = 2
@@ -153,7 +154,7 @@ final class SystemAudioRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
                     }
                 }
                 mono.withUnsafeBufferPointer { p in
-                    let pcm = downsampleFloatTo16kMono(
+                    let pcm = AudioUtils.downsampleFloatTo16kMono(
                         samples: p.baseAddress!,
                         frameCount: numSamples,
                         channelCount: 1,
@@ -165,7 +166,7 @@ final class SystemAudioRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
                 }
             } else {
                 let floatPtr = mData.assumingMemoryBound(to: Float.self)
-                let pcm = downsampleFloatTo16kMono(
+                let pcm = AudioUtils.downsampleFloatTo16kMono(
                     samples: floatPtr,
                     frameCount: numSamples,
                     channelCount: max(1, channels),
@@ -213,7 +214,7 @@ final class MicrophoneRecorder {
             }
             
             interleaved.withUnsafeBufferPointer { bufPtr in
-                let pcm = downsampleFloatTo16kMono(
+                let pcm = AudioUtils.downsampleFloatTo16kMono(
                     samples: bufPtr.baseAddress!,
                     frameCount: frameCount,
                     channelCount: channels,
@@ -247,7 +248,7 @@ struct Main {
                 do {
                     try await recorder.start()
                     while true {
-                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        try? await Task.sleep(nanoseconds: 3_600_000_000_000)
                     }
                 } catch {
                     fputs("ERROR: ScreenCaptureKit initialization failed: \(error.localizedDescription)\n", stderr)
@@ -266,7 +267,7 @@ struct Main {
             do {
                 try mic.start()
                 while true {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    try? await Task.sleep(nanoseconds: 3_600_000_000_000)
                 }
             } catch {
                 fputs("ERROR: Microphone initialization failed: \(error.localizedDescription)\n", stderr)

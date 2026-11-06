@@ -93,8 +93,8 @@ jobs:
       - name: Build macOS native audio helper
         run: |
           mkdir -p src-tauri/bin
-          swiftc -O src-tauri/src/mac_audio_capture.swift -target arm64-apple-macos13.0 -o /tmp/audio-arm64
-          swiftc -O src-tauri/src/mac_audio_capture.swift -target x86_64-apple-macos13.0 -o /tmp/audio-x86_64
+          swiftc -O -parse-as-library src-tauri/src/mac_audio_capture.swift -target arm64-apple-macos13.0 -o /tmp/audio-arm64
+          swiftc -O -parse-as-library src-tauri/src/mac_audio_capture.swift -target x86_64-apple-macos13.0 -o /tmp/audio-x86_64
           lipo -create /tmp/audio-arm64 /tmp/audio-x86_64 -output src-tauri/bin/cuvilo-audio-capture
           chmod +x src-tauri/bin/cuvilo-audio-capture
       - name: Build signed macOS bundle
