@@ -7,7 +7,30 @@ pub fn system_language() -> &'static str {
     let language = unsafe { windows::Win32::Globalization::GetUserDefaultUILanguage() };
     if language & 0x03ff == 0x04 { "zh-CN" } else { "en" }
 }
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
+pub fn system_language() -> &'static str {
+    if let Ok(output) = std::process::Command::new("/usr/bin/defaults")
+        .args(["read", "-g", "AppleLocale"])
+        .output()
+    {
+        let locale = String::from_utf8_lossy(&output.stdout);
+        if locale.to_lowercase().starts_with("zh") {
+            return "zh-CN";
+        }
+    }
+    if let Ok(output) = std::process::Command::new("/usr/bin/defaults")
+        .args(["read", "-g", "AppleLanguages"])
+        .output()
+    {
+        let langs = String::from_utf8_lossy(&output.stdout);
+        if langs.to_lowercase().contains("zh-") || langs.to_lowercase().contains("zh_") {
+            return "zh-CN";
+        }
+    }
+    let lang = std::env::var("LANG").or_else(|_| std::env::var("LC_ALL")).unwrap_or_default();
+    if lang.to_lowercase().starts_with("zh") { "zh-CN" } else { "en" }
+}
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub fn system_language() -> &'static str {
     let lang = std::env::var("LANG").or_else(|_| std::env::var("LC_ALL")).unwrap_or_default();
     if lang.to_lowercase().starts_with("zh") { "zh-CN" } else { "en" }
