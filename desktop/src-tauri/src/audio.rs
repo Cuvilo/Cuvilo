@@ -36,14 +36,63 @@ mod implementation {
     }
 
     pub fn sources() -> Result<Vec<AudioSource>> {
-        Ok(vec![AudioSource {
-            process_capture_supported: Some(false),
-            id: "system".into(),
-            name: "默认系统音频 / 麦克风".into(),
-            kind: "system".into(),
-            pid: None,
-            recommended: true,
-        }])
+        let mut list = vec![
+            AudioSource {
+                process_capture_supported: Some(true),
+                id: "system".into(),
+                name: "全部系统声音 (ScreenCaptureKit 免驱动)".into(),
+                kind: "system".into(),
+                pid: None,
+                recommended: true,
+            },
+            AudioSource {
+                process_capture_supported: Some(false),
+                id: "mic".into(),
+                name: "内置麦克风 (环境与外放拾音)".into(),
+                kind: "process".into(),
+                pid: None,
+                recommended: false,
+            },
+        ];
+        if std::path::Path::new("/Library/Audio/Plug-Ins/HAL/BlackHole.driver").exists()
+            || std::path::Path::new("/Library/Audio/Plug-Ins/HAL/BlackHole2ch.driver").exists()
+        {
+            list.push(AudioSource {
+                process_capture_supported: Some(false),
+                id: "blackhole".into(),
+                name: "BlackHole 虚拟音频通道".into(),
+                kind: "process".into(),
+                pid: None,
+                recommended: false,
+            });
+        }
+        Ok(list)
+    }
+
+    fn helper_binary() -> Option<std::path::PathBuf> {
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                let candidates = [
+                    dir.join("cuvilo-audio-capture"),
+                    dir.join("../Resources/bin/cuvilo-audio-capture"),
+                    dir.join("../Resources/cuvilo-audio-capture"),
+                ];
+                for candidate in candidates {
+                    if candidate.exists() {
+                        return Some(candidate);
+                    }
+                }
+            }
+        }
+        let dev = std::path::PathBuf::from("src-tauri/bin/cuvilo-audio-capture");
+        if dev.exists() {
+            return Some(dev);
+        }
+        let dev_alt = std::path::PathBuf::from("bin/cuvilo-audio-capture");
+        if dev_alt.exists() {
+            return Some(dev_alt);
+        }
+        None
     }
 
     pub fn spawn(
@@ -54,12 +103,66 @@ mod implementation {
         notices: mpsc::UnboundedSender<Notice>,
     ) {
         std::thread::spawn(move || {
+            let is_mic = mic || _source.id == "mic";
             let label = if mic { "microphone" } else { "meeting" };
             let _ = notices.send(Notice {
                 source: label.into(),
                 message: "音频采集已启动".into(),
                 error: false,
             });
+            let bin = helper_binary();
+            let mode = if is_mic { "mic" } else { "system" };
+            if let Some(path) = bin {
+                if let Ok(mut child) = std::process::Command::new(&path)
+                    .args(["--mode", mode])
+                    .stdout(std::process::Stdio::piped())
+                    .stderr(std::process::Stdio::piped())
+                    .spawn()
+                {
+                    if let Some(mut stdout) = child.stdout.take() {
+                        let mut buf = [0u8; 1280];
+                        use std::io::Read;
+                        while !cancel.is_cancelled() {
+                            match stdout.read_exact(&mut buf) {
+                                Ok(()) => {
+                                    let level = buf
+                                        .chunks_exact(2)
+                                        .map(|b| i16::from_le_bytes([b[0], b[1]]).unsigned_abs() as f32 / 32768.0)
+                                        .fold(0.0, f32::max);
+                                    let _ = frames.try_send(Frame {
+                                        pcm: buf.to_vec(),
+                                        source: label.into(),
+                                        level,
+                                        at: now_ms(),
+                                    });
+                                }
+                                Err(_) => break,
+                            }
+                        }
+                    }
+                    let mut stderr_output = String::new();
+                    if let Some(mut stderr) = child.stderr.take() {
+                        use std::io::Read;
+                        let _ = stderr.read_to_string(&mut stderr_output);
+                    }
+                    let _ = child.kill();
+                    if !cancel.is_cancelled() && !stderr_output.is_empty() {
+                        let msg = if stderr_output.contains("ScreenCaptureKit") {
+                            "macOS 需要屏幕与系统音频录制权限，请在【系统设置】->【隐私与安全性】->【屏幕与系统音频录制】中允许 Cuvilo"
+                        } else if stderr_output.contains("Microphone") {
+                            "macOS 需要麦克风权限，请在【系统设置】->【隐私与安全性】->【麦克风】中允许 Cuvilo"
+                        } else {
+                            "音频采集异常退出，请检查系统音频权限"
+                        };
+                        let _ = notices.send(Notice {
+                            source: label.into(),
+                            message: msg.into(),
+                            error: true,
+                        });
+                    }
+                    return;
+                }
+            }
             let mut last = Instant::now();
             let pcm = vec![0u8; 1280];
             while !cancel.is_cancelled() {

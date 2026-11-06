@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Cuvilo 需要访问麦克风以采集面试问题与发言</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Cuvilo 需要屏幕与系统音频录制权限以捕获面试声音（免驱动模式）</string>
+</dict>
+</plist>
