@@ -7,9 +7,12 @@ pub fn apply_theme(raw:*mut std::ffi::c_void,dark:bool){
     let (caption,text)=if dark{(24,229)}else{(245,23)};
     apply_neutral(raw,caption,text);
 }
-pub fn apply_neutral(raw:*mut std::ffi::c_void,caption:u32,text:u32){
+pub fn apply_neutral(_raw:*mut std::ffi::c_void,_caption:u32,_text:u32){
     #[cfg(target_os = "windows")]
     {
+        let raw = _raw;
+        let caption = _caption;
+        let text = _text;
         let hwnd = windows::Win32::Foundation::HWND(raw);
         use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DwmGetWindowAttribute, DwmFlush, DWMWA_CAPTION_COLOR, DWMWA_TEXT_COLOR, DWMWA_TRANSITIONS_FORCEDISABLED};
         // COLORREF is 0x00BBGGRR. Neutral components are intentionally equal.

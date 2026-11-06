@@ -89,6 +89,8 @@ pub async fn preview(app:&tauri::AppHandle,preference:String,resolved_dark:Optio
  let ticket=preview_ticket();
  let _caption_preview=CaptionPreview::new(ticket);
  if let Some(start)=started{
+  #[cfg(target_os = "windows")]
+  {
   if !start.is_finite()||(start-crate::types::now_ms() as f64).abs()>1000.{return Err("外观过渡时间无效".into());}
   let chosen=preference.clone();
   let (from,to)=crate::capture_protection::on_ui(app,move|app|{
@@ -103,12 +105,16 @@ pub async fn preview(app:&tauri::AppHandle,preference:String,resolved_dark:Optio
     // Sample the clock on the UI thread; queued IPC/UI work must not cost a frame.
     let fraction=((crate::types::now_ms() as f64-start)/180.).clamp(0.,1.);
     let progress=fade_progress(fraction);
-    #[cfg(target_os = "windows")]
     if preview_current(ticket){if let Some(window)=app.get_webview_window("main"){if let Ok(hwnd)=window.hwnd(){let blend=|a:u32,b:u32|(a as f64+(b as f64-a as f64)*progress).round() as u32;crate::window_style::apply_neutral(hwnd.0,blend(from.0,to.0),blend(from.1,to.1));}}}Ok(fraction>=1.)
    }).await?;
    // apply_neutral already waits for DWM composition. A Windows 1ms
    // timer can round up to ~16ms and skip several high-refresh frames.
    if finished{break;}tokio::task::yield_now().await;
+  }
+  }
+  #[cfg(not(target_os = "windows"))]
+  {
+   let _ = (start, &resolved_dark);
   }
  }
  if !preview_current(ticket){return Ok(());}

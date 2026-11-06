@@ -47,7 +47,7 @@ mod implementation {
     }
 
     pub fn spawn(
-        source: AudioSource,
+        _source: AudioSource,
         mic: bool,
         cancel: CancellationToken,
         frames: mpsc::Sender<Frame>,

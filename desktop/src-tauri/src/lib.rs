@@ -480,8 +480,8 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(plugin)
         .setup(|app| {
+            #[cfg(target_os = "windows")]
             if let Some(main) = app.get_webview_window("main") {
-                #[cfg(target_os = "windows")]
                 if let Ok(hwnd) = main.hwnd() { window_style::apply(hwnd.0); }
             }
             let path = app.path().app_data_dir()?;

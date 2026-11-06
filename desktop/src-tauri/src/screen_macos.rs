@@ -73,7 +73,7 @@ pub fn select(cancel: Arc<AtomicBool>, _english: bool) -> Result<Option<Crop>> {
 
     let decoder = png::Decoder::new(std::io::Cursor::new(file_bytes));
     let mut reader = decoder.read_info()?;
-    let mut buf = vec![0; reader.output_buffer_size()];
+    let mut buf = vec![0; reader.output_buffer_size().context("无法读取截图缓冲区大小")?];
     let info = reader.next_frame(&mut buf)?;
     let width = info.width as i32;
     let height = info.height as i32;
