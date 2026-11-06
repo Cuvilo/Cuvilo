@@ -57,11 +57,7 @@ mod implementation {
             let label = if mic { "microphone" } else { "meeting" };
             let _ = notices.send(Notice {
                 source: label.into(),
-                message: if mic {
-                    "macOS 麦克风通道已就绪".into()
-                } else {
-                    "macOS 系统声音内录建议配合虚拟音频设备（如 BlackHole）或系统音频权限".into()
-                },
+                message: "音频采集已启动".into(),
                 error: false,
             });
             let mut last = Instant::now();
