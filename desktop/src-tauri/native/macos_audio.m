@@ -191,14 +191,6 @@ void *mac_start_system_audio_capture(
     void *context,
     char **error_out
 ) {
-    if (!CGPreflightScreenCaptureAccess()) {
-        CGRequestScreenCaptureAccess();
-        if (error_out) {
-            *error_out = strdup("permission_denied");
-        }
-        return NULL;
-    }
-
     if (@available(macOS 13.0, *)) {
         dispatch_semaphore_t sem = dispatch_semaphore_create(0);
         __block SCShareableContent *capturedContent = nil;
@@ -214,6 +206,19 @@ void *mac_start_system_audio_capture(
 
         dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC));
         if (dispatch_semaphore_wait(sem, timeout) != 0 || !capturedContent) {
+            if (contentError) {
+                NSInteger code = contentError.code;
+                NSString *desc = [contentError localizedDescription];
+                if (code == -3801 || (desc && ([desc localizedCaseInsensitiveContainsString:@"declined"] ||
+                                               [desc localizedCaseInsensitiveContainsString:@"denied"] ||
+                                               [desc localizedCaseInsensitiveContainsString:@"permission"]))) {
+                    CGRequestScreenCaptureAccess();
+                    if (error_out) {
+                        *error_out = strdup("permission_denied");
+                    }
+                    return NULL;
+                }
+            }
             if (error_out) {
                 *error_out = strdup(contentError ? [[contentError localizedDescription] UTF8String] : "ScreenCaptureKit content timeout");
             }
@@ -222,8 +227,9 @@ void *mac_start_system_audio_capture(
 
         SCDisplay *display = capturedContent.displays.firstObject;
         if (!display) {
+            CGRequestScreenCaptureAccess();
             if (error_out) {
-                *error_out = strdup("No display found for ScreenCaptureKit");
+                *error_out = strdup("permission_denied");
             }
             return NULL;
         }
@@ -266,6 +272,19 @@ void *mac_start_system_audio_capture(
         }];
 
         if (dispatch_semaphore_wait(startSem, timeout) != 0 || startErr) {
+            if (startErr) {
+                NSInteger code = startErr.code;
+                NSString *desc = [startErr localizedDescription];
+                if (code == -3801 || (desc && ([desc localizedCaseInsensitiveContainsString:@"declined"] ||
+                                               [desc localizedCaseInsensitiveContainsString:@"denied"] ||
+                                               [desc localizedCaseInsensitiveContainsString:@"permission"]))) {
+                    CGRequestScreenCaptureAccess();
+                    if (error_out) {
+                        *error_out = strdup("permission_denied");
+                    }
+                    return NULL;
+                }
+            }
             if (error_out) {
                 *error_out = strdup(startErr ? [[startErr localizedDescription] UTF8String] : "ScreenCaptureKit start timeout");
             }

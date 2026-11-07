@@ -67,11 +67,13 @@ pub fn apply(app:&tauri::AppHandle,preference:&str)->Result<(),String>{
 static PREVIEW_TICKET:std::sync::atomic::AtomicU64=std::sync::atomic::AtomicU64::new(0);
 pub fn preview_ticket()->u64{PREVIEW_TICKET.fetch_add(1,std::sync::atomic::Ordering::SeqCst)+1}
 pub fn preview_current(ticket:u64)->bool{PREVIEW_TICKET.load(std::sync::atomic::Ordering::SeqCst)==ticket}
+#[allow(dead_code)]
 pub fn fade_progress(linear:f64)->f64{
  let x=linear.clamp(0.,1.);let(mut low,mut high)=(0.,1.);
  for _ in 0..18{let t=(low+high)/2.;let a=1.-t;let estimate=3.*a*a*t*0.2+t*t*t;if estimate<x{low=t;}else{high=t;}}
  let t=(low+high)/2.;3.*(1.-t)*t*t+t*t*t
 }
+#[allow(dead_code)]
 #[cfg(target_os="windows")]
 pub fn caption_values(window:&tauri::WebviewWindow)->(u32,u32){
  use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute,DWMWA_CAPTION_COLOR,DWMWA_TEXT_COLOR};
@@ -79,6 +81,7 @@ pub fn caption_values(window:&tauri::WebviewWindow)->(u32,u32){
  if let Ok(hwnd)=window.hwnd(){unsafe{let mut value=0u32;if DwmGetWindowAttribute(windows::Win32::Foundation::HWND(hwnd.0),DWMWA_CAPTION_COLOR,&mut value as *mut _ as _,4).is_ok()&&value<=0xffffff{caption=value&255;}if DwmGetWindowAttribute(windows::Win32::Foundation::HWND(hwnd.0),DWMWA_TEXT_COLOR,&mut value as *mut _ as _,4).is_ok()&&value<=0xffffff{text=value&255;}}}
  (caption,text)
 }
+#[allow(dead_code)]
 #[cfg(not(target_os="windows"))]
 pub fn caption_values(window:&tauri::WebviewWindow)->(u32,u32){
  let dark=window.theme().ok()==Some(tauri::Theme::Dark);

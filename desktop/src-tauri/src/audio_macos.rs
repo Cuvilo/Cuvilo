@@ -59,8 +59,6 @@ mod mac_native {
     );
 
     unsafe extern "C" {
-        pub fn mac_has_screen_capture_permission() -> bool;
-        pub fn mac_request_screen_capture_permission() -> bool;
         pub fn mac_start_system_audio_capture(
             data_cb: MacAudioDataCallback,
             error_cb: MacAudioErrorCallback,
@@ -133,25 +131,6 @@ pub fn spawn(
         let is_mic = mic || _source.id == "mic";
         let label = if mic { "microphone" } else { "meeting" };
 
-        if !is_mic {
-            let has_perm = unsafe { mac_native::mac_has_screen_capture_permission() };
-            if !has_perm {
-                unsafe { mac_native::mac_request_screen_capture_permission() };
-                let _ = notices.send(Notice {
-                    source: label.into(),
-                    message: "macOS 需要屏幕与系统音频录制权限：请在【系统设置】->【隐私与安全性】->【录屏与系统录音】中允许 Cuvilo。开启权限后须完全退出（Cmd+Q）并重启软件生效。".into(),
-                    error: true,
-                });
-                return;
-            }
-        }
-
-        let _ = notices.send(Notice {
-            source: label.into(),
-            message: "音频采集已启动".into(),
-            error: false,
-        });
-
         let context = Box::new(AudioBridgeContext {
             frames,
             notices: notices.clone(),
@@ -185,7 +164,7 @@ pub fn spawn(
                 let s = unsafe { std::ffi::CStr::from_ptr(error_ptr) }.to_string_lossy().into_owned();
                 unsafe { mac_native::mac_audio_free_string(error_ptr) };
                 if s == "permission_denied" {
-                    "macOS 需要屏幕与系统音频录制权限：请在【系统设置】->【隐私与安全性】->【录屏与系统录音】中允许 Cuvilo（开启后须完全退出并重启软件生效）".to_string()
+                    "macOS 需要屏幕与系统音频录制权限：请在【系统设置】->【隐私与安全性】->【录屏与系统录音】中允许 Cuvilo。若已显示在列表中，请先选中并点击底部的减号（-）移除后重新勾选，开启后请完全退出（Cmd+Q）并重启软件。".to_string()
                 } else {
                     format!("启动系统音频采集失败：{}", s)
                 }
@@ -200,6 +179,12 @@ pub fn spawn(
             unsafe { drop(Box::from_raw(context_ptr)) };
             return;
         }
+
+        let _ = notices.send(Notice {
+            source: label.into(),
+            message: "音频采集已启动".into(),
+            error: false,
+        });
 
         while !cancel.is_cancelled() {
             std::thread::sleep(Duration::from_millis(50));

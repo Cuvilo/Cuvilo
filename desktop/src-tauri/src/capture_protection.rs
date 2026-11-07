@@ -47,10 +47,12 @@ fn emit(app: &tauri::AppHandle) {
     app.state::<Arc<Core>>()
         .emit(serde_json::json!({"type":"captureProtectionChanged","sessionId":""}));
 }
+#[allow(dead_code)]
 trait Affinity {
     fn set(&mut self, value: u32) -> Result<(), String>;
     fn get(&mut self) -> Result<u32, String>;
 }
+#[allow(dead_code)]
 fn verify(api: &mut impl Affinity, enabled: bool) -> Result<u32, String> {
     let expected = if enabled { 0x11 } else { 0 };
     api.set(expected)?;

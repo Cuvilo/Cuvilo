@@ -4,10 +4,12 @@ mod implementation;
 
 #[cfg(not(target_os = "windows"))]
 mod implementation {
+    #[allow(dead_code)]
     pub fn inherit_capture<T>(_owner: T) -> Result<(), String> {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn refresh(_raw: *mut std::ffi::c_void, _caption: u32, _text: u32) {}
 
     #[tauri::command]

@@ -8,6 +8,7 @@ fn command()->Result<String,String>{
  let path=std::env::current_exe().map_err(|_|"无法读取程序位置")?;
  quoted_command(&path)
 }
+#[allow(dead_code)]
 fn quoted_command(path:&std::path::Path)->Result<String,String>{
  let value=path.to_str().ok_or("程序路径格式不受支持")?;
  if !path.is_absolute()||value.contains(['"','\r','\n']){return Err("程序路径格式不受支持".into());}
