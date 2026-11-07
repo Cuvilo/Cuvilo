@@ -164,12 +164,16 @@ pub fn spawn(
                 let s = unsafe { std::ffi::CStr::from_ptr(error_ptr) }.to_string_lossy().into_owned();
                 unsafe { mac_native::mac_audio_free_string(error_ptr) };
                 if s == "permission_denied" {
-                    "macOS 需要屏幕与系统音频录制权限：请在【系统设置】->【隐私与安全性】->【录屏与系统录音】中允许 Cuvilo。若已显示在列表中，请先选中并点击底部的减号（-）移除后重新勾选，开启后请完全退出（Cmd+Q）并重启软件。".to_string()
+                    if is_mic {
+                        "macOS 需要麦克风权限：请在【系统设置】->【隐私与安全性】->【麦克风】中允许 Cuvilo".to_string()
+                    } else {
+                        "macOS 需要屏幕与系统音频录制权限：请在【系统设置】->【隐私与安全性】->【录屏与系统录音】中允许 Cuvilo。若已显示在列表中，请先选中并点击底部的减号（-）移除后重新勾选，开启后请完全退出（Cmd+Q）并重启软件。".to_string()
+                    }
                 } else {
-                    format!("启动系统音频采集失败：{}", s)
+                    format!("启动音频采集失败：{}", s)
                 }
             } else {
-                "启动系统音频采集失败".to_string()
+                "启动音频采集失败".to_string()
             };
             let _ = notices.send(Notice {
                 source: label.into(),

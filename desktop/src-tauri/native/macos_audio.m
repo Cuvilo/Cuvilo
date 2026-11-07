@@ -204,7 +204,7 @@ void *mac_start_system_audio_capture(
             dispatch_semaphore_signal(sem);
         }];
 
-        dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC));
+        dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(30 * NSEC_PER_SEC));
         if (dispatch_semaphore_wait(sem, timeout) != 0 || !capturedContent) {
             if (contentError) {
                 NSInteger code = contentError.code;
@@ -334,6 +334,27 @@ void *mac_start_mic_audio_capture(
     char **error_out
 ) {
     @try {
+        if (@available(macOS 10.14, *)) {
+            AVAuthorizationStatus status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio];
+            if (status == AVAuthorizationStatusNotDetermined) {
+                dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+                __block BOOL grantedAccess = NO;
+                [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted) {
+                    grantedAccess = granted;
+                    dispatch_semaphore_signal(sem);
+                }];
+                dispatch_time_t waitTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(60 * NSEC_PER_SEC));
+                dispatch_semaphore_wait(sem, waitTime);
+                if (!grantedAccess) {
+                    if (error_out) *error_out = strdup("permission_denied");
+                    return NULL;
+                }
+            } else if (status == AVAuthorizationStatusDenied || status == AVAuthorizationStatusRestricted) {
+                if (error_out) *error_out = strdup("permission_denied");
+                return NULL;
+            }
+        }
+
         AVAudioEngine *engine = [[AVAudioEngine alloc] init];
         AVAudioInputNode *input = [engine inputNode];
         AVAudioFormat *format = [input outputFormatForBus:0];

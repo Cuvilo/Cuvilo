@@ -300,11 +300,33 @@ async fn test_audio(core: State<'_>, source: AudioSource) -> Result<(), String> 
     let (tx, mut rx) = tokio::sync::mpsc::channel(150);
     let (ntx, mut nrx) = tokio::sync::mpsc::unbounded_channel();
     audio::spawn(source, false, cancel.clone(), tx, ntx);
-    let deadline = tokio::time::sleep(std::time::Duration::from_secs(5));
+    let deadline = tokio::time::sleep(std::time::Duration::from_secs(30));
     tokio::pin!(deadline);
+    let listen_deadline = tokio::time::sleep(std::time::Duration::from_secs(5));
+    tokio::pin!(listen_deadline);
+    let mut started = false;
     let mut max = 0.0f32;
     let result = loop {
-        tokio::select! {_=&mut deadline=>break Ok(()),Some(frame)=rx.recv()=>{max=max.max(frame.level);core.emit(json!({"type":"level","sessionId":"test","source":"meeting","level":frame.level}));},Some(notice)=nrx.recv()=>{if notice.error{break Err(notice.message)}}}
+        tokio::select! {
+            _ = &mut deadline => break Ok(()),
+            _ = &mut listen_deadline, if started => break Ok(()),
+            Some(frame) = rx.recv() => {
+                if !started {
+                    started = true;
+                    listen_deadline.as_mut().reset(tokio::time::Instant::now() + std::time::Duration::from_secs(5));
+                }
+                max = max.max(frame.level);
+                core.emit(json!({"type":"level","sessionId":"test","source":"meeting","level":frame.level}));
+            },
+            Some(notice) = nrx.recv() => {
+                if notice.error {
+                    break Err(notice.message);
+                } else if notice.message == "音频采集已启动" {
+                    started = true;
+                    listen_deadline.as_mut().reset(tokio::time::Instant::now() + std::time::Duration::from_secs(5));
+                }
+            }
+        }
     };
     cancel.cancel();
     result?;
