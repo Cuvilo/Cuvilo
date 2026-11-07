@@ -1,6 +1,6 @@
 {
   "name": "cuvilo-desktop",
-  "version": "0.1.54",
+  "version": "0.1.55",
   "private": true,
   "type": "module",
   "scripts": {
@@ -41,3 +41,4 @@
     "vitest": "^3.2.0"
   }
 }
+
