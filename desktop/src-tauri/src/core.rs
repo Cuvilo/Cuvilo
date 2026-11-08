@@ -361,7 +361,8 @@ impl Core {
             frame_tx.clone(),
             notice_tx.clone(),
         );
-        if options.microphone {
+        let separate_mic = options.microphone && !(cfg!(target_os = "macos") && options.source.id == "mic");
+        if separate_mic {
             audio::spawn(
                 options.source.clone(),
                 true,
@@ -383,7 +384,7 @@ impl Core {
             cancel.clone(),
             meeting_ready.clone(),
         ));
-        if options.microphone {
+        if separate_mic {
             tokio::spawn(asr::run(
                 provider,
                 secret,

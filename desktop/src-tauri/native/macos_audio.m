@@ -8,9 +8,73 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <pthread.h>
 
 typedef void (*MacAudioDataCallback)(const uint8_t *pcm, size_t length, float level, void *context);
 typedef void (*MacAudioErrorCallback)(const char *error_message, void *context);
+
+static pthread_mutex_t g_tcc_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static NSString *current_binary_tcc_key(void) {
+    NSBundle *bundle = [NSBundle mainBundle];
+    NSString *version = [bundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"0";
+    NSString *execPath = [bundle executablePath] ?: @"";
+    NSDictionary *attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:execPath error:nil];
+    NSDate *mtime = [attrs fileModificationDate];
+    unsigned long long size = [attrs fileSize];
+    long long ts = mtime ? (long long)[mtime timeIntervalSince1970] : 0;
+    return [NSString stringWithFormat:@"%@:%lld:%llu", version, ts, size];
+}
+
+static void reset_tcc_service_for_bundle(NSString *service) {
+    @try {
+        NSString *bundleId = [[NSBundle mainBundle] bundleIdentifier] ?: @"local.interview.copilot";
+        NSTask *task = [[NSTask alloc] init];
+        [task setLaunchPath:@"/usr/bin/tccutil"];
+        [task setArguments:@[@"reset", service, bundleId]];
+        [task setStandardOutput:[NSPipe pipe]];
+        [task setStandardError:[NSPipe pipe]];
+        [task launch];
+        [task waitUntilExit];
+    } @catch (NSException *exception) {
+    }
+}
+
+static void ensure_screen_tcc_fresh_for_current_binary(BOOL force_on_denied) {
+    pthread_mutex_lock(&g_tcc_mutex);
+    NSString *sig = current_binary_tcc_key();
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString *prepared = [defaults stringForKey:@"CuviloScreenTCCBinaryKey"];
+    if (![sig isEqualToString:prepared]) {
+        if (force_on_denied || !CGPreflightScreenCaptureAccess()) {
+            [defaults setObject:sig forKey:@"CuviloScreenTCCBinaryKey"];
+            [defaults synchronize];
+            reset_tcc_service_for_bundle(@"ScreenCapture");
+            if (force_on_denied) {
+                CGRequestScreenCaptureAccess();
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_tcc_mutex);
+}
+
+static void ensure_mic_tcc_fresh_for_current_binary(void) {
+    pthread_mutex_lock(&g_tcc_mutex);
+    NSString *sig = current_binary_tcc_key();
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString *prepared = [defaults stringForKey:@"CuviloMicTCCBinaryKey"];
+    if (![sig isEqualToString:prepared]) {
+        [defaults setObject:sig forKey:@"CuviloMicTCCBinaryKey"];
+        [defaults synchronize];
+        if (@available(macOS 10.14, *)) {
+            AVAuthorizationStatus status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio];
+            if (status != AVAuthorizationStatusAuthorized) {
+                reset_tcc_service_for_bundle(@"Microphone");
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_tcc_mutex);
+}
 
 bool mac_has_screen_capture_permission(void) {
     return CGPreflightScreenCaptureAccess();
@@ -69,36 +133,74 @@ static void process_audio_sample_buffer(
         UInt32 channels = asbd->mChannelsPerFrame;
         double sampleRate = asbd->mSampleRate;
         BOOL isFloat = (asbd->mFormatFlags & kAudioFormatFlagIsFloat) != 0;
+        BOOL isSignedInt = (asbd->mFormatFlags & kAudioFormatFlagIsSignedInteger) != 0;
 
-        if (isFloat && numBuffers > 0) {
+        if ((isFloat || isSignedInt) && numBuffers > 0) {
             float *mono = (float *)calloc((size_t)numSamples, sizeof(float));
             if (mono) {
-                if (numBuffers > 1) {
-                    float inv = 1.0f / (float)numBuffers;
-                    for (UInt32 b = 0; b < numBuffers; b++) {
-                        const float *src = (const float *)bufferList->mBuffers[b].mData;
+                if (isFloat) {
+                    if (numBuffers > 1) {
+                        float inv = 1.0f / (float)numBuffers;
+                        for (UInt32 b = 0; b < numBuffers; b++) {
+                            const float *src = (const float *)bufferList->mBuffers[b].mData;
+                            size_t avail = bufferList->mBuffers[b].mDataByteSize / sizeof(float);
+                            size_t limit = (size_t)numSamples < avail ? (size_t)numSamples : avail;
+                            if (src) {
+                                for (size_t i = 0; i < limit; i++) {
+                                    mono[i] += src[i] * inv;
+                                }
+                            }
+                        }
+                    } else if (channels > 1) {
+                        const float *src = (const float *)bufferList->mBuffers[0].mData;
+                        size_t avail = bufferList->mBuffers[0].mDataByteSize / (sizeof(float) * channels);
+                        size_t limit = (size_t)numSamples < avail ? (size_t)numSamples : avail;
                         if (src) {
-                            for (CMItemCount i = 0; i < numSamples; i++) {
-                                mono[i] += src[i] * inv;
+                            float inv = 1.0f / (float)channels;
+                            for (size_t i = 0; i < limit; i++) {
+                                float sum = 0.0f;
+                                for (UInt32 c = 0; c < channels; c++) {
+                                    sum += src[i * channels + c];
+                                }
+                                mono[i] = sum * inv;
                             }
                         }
-                    }
-                } else if (channels > 1) {
-                    const float *src = (const float *)bufferList->mBuffers[0].mData;
-                    if (src) {
-                        float inv = 1.0f / (float)channels;
-                        for (CMItemCount i = 0; i < numSamples; i++) {
-                            float sum = 0.0f;
-                            for (UInt32 c = 0; c < channels; c++) {
-                                sum += src[i * channels + c];
-                            }
-                            mono[i] = sum * inv;
+                    } else {
+                        const float *src = (const float *)bufferList->mBuffers[0].mData;
+                        size_t avail = bufferList->mBuffers[0].mDataByteSize / sizeof(float);
+                        size_t limit = (size_t)numSamples < avail ? (size_t)numSamples : avail;
+                        if (src && limit > 0) {
+                            memcpy(mono, src, limit * sizeof(float));
                         }
                     }
-                } else {
-                    const float *src = (const float *)bufferList->mBuffers[0].mData;
-                    if (src) {
-                        memcpy(mono, src, (size_t)numSamples * sizeof(float));
+                } else if (asbd->mBitsPerChannel == 16) {
+                    if (numBuffers > 1) {
+                        float inv = 1.0f / ((float)numBuffers * 32768.0f);
+                        for (UInt32 b = 0; b < numBuffers; b++) {
+                            const int16_t *src = (const int16_t *)bufferList->mBuffers[b].mData;
+                            size_t avail = bufferList->mBuffers[b].mDataByteSize / sizeof(int16_t);
+                            size_t limit = (size_t)numSamples < avail ? (size_t)numSamples : avail;
+                            if (src) {
+                                for (size_t i = 0; i < limit; i++) {
+                                    mono[i] += (float)src[i] * inv;
+                                }
+                            }
+                        }
+                    } else {
+                        const int16_t *src = (const int16_t *)bufferList->mBuffers[0].mData;
+                        UInt32 ch = channels > 0 ? channels : 1;
+                        size_t avail = bufferList->mBuffers[0].mDataByteSize / (sizeof(int16_t) * ch);
+                        size_t limit = (size_t)numSamples < avail ? (size_t)numSamples : avail;
+                        if (src) {
+                            float inv = 1.0f / ((float)ch * 32768.0f);
+                            for (size_t i = 0; i < limit; i++) {
+                                float sum = 0.0f;
+                                for (UInt32 c = 0; c < ch; c++) {
+                                    sum += (float)src[i * ch + c];
+                                }
+                                mono[i] = sum * inv;
+                            }
+                        }
                     }
                 }
 
@@ -156,6 +258,7 @@ static void process_audio_sample_buffer(
 @property (nonatomic, assign) MacAudioErrorCallback errorCallback;
 @property (nonatomic, assign) void *context;
 @property (nonatomic, strong) dispatch_queue_t audioQueue;
+@property (nonatomic, strong) dispatch_queue_t videoQueue;
 @property (nonatomic, assign) BOOL running;
 @end
 
@@ -191,113 +294,124 @@ void *mac_start_system_audio_capture(
     void *context,
     char **error_out
 ) {
-    if (@available(macOS 13.0, *)) {
-        dispatch_semaphore_t sem = dispatch_semaphore_create(0);
-        __block SCShareableContent *capturedContent = nil;
-        __block NSError *contentError = nil;
+    @autoreleasepool {
+        if (@available(macOS 13.0, *)) {
+            ensure_screen_tcc_fresh_for_current_binary(NO);
 
-        [SCShareableContent getShareableContentExcludingDesktopWindows:NO
-                                                  onScreenWindowsOnly:YES
-                                                    completionHandler:^(SCShareableContent * _Nullable shareableContent, NSError * _Nullable error) {
-            capturedContent = shareableContent;
-            contentError = error;
-            dispatch_semaphore_signal(sem);
-        }];
+            dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+            __block SCShareableContent *capturedContent = nil;
+            __block NSError *contentError = nil;
 
-        dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(30 * NSEC_PER_SEC));
-        if (dispatch_semaphore_wait(sem, timeout) != 0 || !capturedContent) {
-            if (contentError) {
-                NSInteger code = contentError.code;
-                NSString *desc = [contentError localizedDescription];
-                if (code == -3801 || (desc && ([desc localizedCaseInsensitiveContainsString:@"declined"] ||
-                                               [desc localizedCaseInsensitiveContainsString:@"denied"] ||
-                                               [desc localizedCaseInsensitiveContainsString:@"permission"]))) {
-                    CGRequestScreenCaptureAccess();
-                    if (error_out) {
-                        *error_out = strdup("permission_denied");
+            [SCShareableContent getShareableContentExcludingDesktopWindows:NO
+                                                      onScreenWindowsOnly:YES
+                                                        completionHandler:^(SCShareableContent * _Nullable shareableContent, NSError * _Nullable error) {
+                capturedContent = shareableContent;
+                contentError = error;
+                dispatch_semaphore_signal(sem);
+            }];
+
+            dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(30 * NSEC_PER_SEC));
+            if (dispatch_semaphore_wait(sem, timeout) != 0 || !capturedContent) {
+                if (contentError) {
+                    NSInteger code = contentError.code;
+                    NSString *desc = [contentError localizedDescription];
+                    if (code == -3801 || (desc && ([desc localizedCaseInsensitiveContainsString:@"declined"] ||
+                                                   [desc localizedCaseInsensitiveContainsString:@"denied"] ||
+                                                   [desc localizedCaseInsensitiveContainsString:@"permission"]))) {
+                        ensure_screen_tcc_fresh_for_current_binary(YES);
+                        if (error_out) {
+                            *error_out = strdup("permission_denied");
+                        }
+                        return NULL;
                     }
-                    return NULL;
                 }
+                if (error_out) {
+                    *error_out = strdup(contentError ? [[contentError localizedDescription] UTF8String] : "ScreenCaptureKit content timeout");
+                }
+                return NULL;
             }
-            if (error_out) {
-                *error_out = strdup(contentError ? [[contentError localizedDescription] UTF8String] : "ScreenCaptureKit content timeout");
+
+            SCDisplay *display = capturedContent.displays.firstObject;
+            if (!display) {
+                if (error_out) {
+                    *error_out = strdup("未找到可用显示器");
+                }
+                return NULL;
             }
-            return NULL;
-        }
 
-        SCDisplay *display = capturedContent.displays.firstObject;
-        if (!display) {
-            CGRequestScreenCaptureAccess();
-            if (error_out) {
-                *error_out = strdup("permission_denied");
+            pthread_mutex_lock(&g_tcc_mutex);
+            [[NSUserDefaults standardUserDefaults] setObject:current_binary_tcc_key() forKey:@"CuviloScreenTCCBinaryKey"];
+            [[NSUserDefaults standardUserDefaults] synchronize];
+            pthread_mutex_unlock(&g_tcc_mutex);
+
+            SCContentFilter *filter = [[SCContentFilter alloc] initWithDisplay:display
+                                                         excludingApplications:@[]
+                                                               exceptingWindows:@[]];
+
+            SCStreamConfiguration *config = [[SCStreamConfiguration alloc] init];
+            config.capturesAudio = YES;
+            config.excludesCurrentProcessAudio = YES;
+            config.channelCount = 2;
+            config.sampleRate = 48000;
+            config.width = 2;
+            config.height = 2;
+            config.minimumFrameInterval = CMTimeMake(1, 1);
+            config.queueDepth = 3;
+
+            CuviloSystemCaptureSession *session = [[CuviloSystemCaptureSession alloc] init];
+            session.dataCallback = data_callback;
+            session.errorCallback = error_callback;
+            session.context = context;
+            session.running = YES;
+            session.audioQueue = dispatch_queue_create("cuvilo.audio.capture", DISPATCH_QUEUE_SERIAL);
+            session.videoQueue = dispatch_queue_create("cuvilo.video.dummy", DISPATCH_QUEUE_SERIAL);
+
+            SCStream *stream = [[SCStream alloc] initWithFilter:filter configuration:config delegate:session];
+            [stream addStreamOutput:session type:SCStreamOutputTypeScreen sampleHandlerQueue:session.videoQueue error:nil];
+            NSError *addErr = nil;
+            [stream addStreamOutput:session type:SCStreamOutputTypeAudio sampleHandlerQueue:session.audioQueue error:&addErr];
+            if (addErr) {
+                if (error_out) {
+                    *error_out = strdup([[addErr localizedDescription] UTF8String]);
+                }
+                return NULL;
             }
-            return NULL;
-        }
 
-        SCContentFilter *filter = [[SCContentFilter alloc] initWithDisplay:display
-                                                     excludingApplications:@[]
-                                                           exceptingWindows:@[]];
+            __block NSError *startErr = nil;
+            dispatch_semaphore_t startSem = dispatch_semaphore_create(0);
+            [stream startCaptureWithCompletionHandler:^(NSError * _Nullable error) {
+                startErr = error;
+                dispatch_semaphore_signal(startSem);
+            }];
 
-        SCStreamConfiguration *config = [[SCStreamConfiguration alloc] init];
-        config.capturesAudio = YES;
-        config.excludesCurrentProcessAudio = YES;
-        config.channelCount = 1;
-        config.sampleRate = 16000;
-        config.width = 2;
-        config.height = 2;
-        config.minimumFrameInterval = CMTimeMake(1, 1);
-
-        CuviloSystemCaptureSession *session = [[CuviloSystemCaptureSession alloc] init];
-        session.dataCallback = data_callback;
-        session.errorCallback = error_callback;
-        session.context = context;
-        session.running = YES;
-        session.audioQueue = dispatch_queue_create("cuvilo.audio.capture", DISPATCH_QUEUE_SERIAL);
-
-        SCStream *stream = [[SCStream alloc] initWithFilter:filter configuration:config delegate:session];
-        NSError *addErr = nil;
-        [stream addStreamOutput:session type:SCStreamOutputTypeAudio sampleHandlerQueue:session.audioQueue error:&addErr];
-        if (addErr) {
-            if (error_out) {
-                *error_out = strdup([[addErr localizedDescription] UTF8String]);
-            }
-            return NULL;
-        }
-
-        __block NSError *startErr = nil;
-        dispatch_semaphore_t startSem = dispatch_semaphore_create(0);
-        [stream startCaptureWithCompletionHandler:^(NSError * _Nullable error) {
-            startErr = error;
-            dispatch_semaphore_signal(startSem);
-        }];
-
-        if (dispatch_semaphore_wait(startSem, timeout) != 0 || startErr) {
-            if (startErr) {
-                NSInteger code = startErr.code;
-                NSString *desc = [startErr localizedDescription];
-                if (code == -3801 || (desc && ([desc localizedCaseInsensitiveContainsString:@"declined"] ||
-                                               [desc localizedCaseInsensitiveContainsString:@"denied"] ||
-                                               [desc localizedCaseInsensitiveContainsString:@"permission"]))) {
-                    CGRequestScreenCaptureAccess();
-                    if (error_out) {
-                        *error_out = strdup("permission_denied");
+            if (dispatch_semaphore_wait(startSem, timeout) != 0 || startErr) {
+                if (startErr) {
+                    NSInteger code = startErr.code;
+                    NSString *desc = [startErr localizedDescription];
+                    if (code == -3801 || (desc && ([desc localizedCaseInsensitiveContainsString:@"declined"] ||
+                                                   [desc localizedCaseInsensitiveContainsString:@"denied"] ||
+                                                   [desc localizedCaseInsensitiveContainsString:@"permission"]))) {
+                        ensure_screen_tcc_fresh_for_current_binary(YES);
+                        if (error_out) {
+                            *error_out = strdup("permission_denied");
+                        }
+                        return NULL;
                     }
-                    return NULL;
                 }
+                if (error_out) {
+                    *error_out = strdup(startErr ? [[startErr localizedDescription] UTF8String] : "ScreenCaptureKit start timeout");
+                }
+                return NULL;
             }
+
+            session.stream = stream;
+            return (__bridge_retained void *)session;
+        } else {
             if (error_out) {
-                *error_out = strdup(startErr ? [[startErr localizedDescription] UTF8String] : "ScreenCaptureKit start timeout");
+                *error_out = strdup("macOS 13.0 or higher is required for ScreenCaptureKit");
             }
             return NULL;
         }
-
-        session.stream = stream;
-        return (__bridge_retained void *)session;
-    } else {
-        if (error_out) {
-            *error_out = strdup("macOS 13.0 or higher is required for ScreenCaptureKit");
-        }
-        return NULL;
     }
 }
 
@@ -333,29 +447,36 @@ void *mac_start_mic_audio_capture(
     void *context,
     char **error_out
 ) {
-    @try {
-        if (@available(macOS 10.14, *)) {
-            AVAuthorizationStatus status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio];
-            if (status == AVAuthorizationStatusNotDetermined) {
-                dispatch_semaphore_t sem = dispatch_semaphore_create(0);
-                __block BOOL grantedAccess = NO;
-                [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted) {
-                    grantedAccess = granted;
-                    dispatch_semaphore_signal(sem);
-                }];
-                dispatch_time_t waitTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(60 * NSEC_PER_SEC));
-                dispatch_semaphore_wait(sem, waitTime);
-                if (!grantedAccess) {
+    @autoreleasepool {
+        @try {
+            ensure_mic_tcc_fresh_for_current_binary();
+            if (@available(macOS 10.14, *)) {
+                pthread_mutex_lock(&g_tcc_mutex);
+                AVAuthorizationStatus status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio];
+                if (status == AVAuthorizationStatusNotDetermined) {
+                    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+                    __block BOOL grantedAccess = NO;
+                    [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted) {
+                        grantedAccess = granted;
+                        dispatch_semaphore_signal(sem);
+                    }];
+                    dispatch_time_t waitTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(60 * NSEC_PER_SEC));
+                    dispatch_semaphore_wait(sem, waitTime);
+                    pthread_mutex_unlock(&g_tcc_mutex);
+                    if (!grantedAccess) {
+                        if (error_out) *error_out = strdup("permission_denied");
+                        return NULL;
+                    }
+                } else if (status == AVAuthorizationStatusDenied || status == AVAuthorizationStatusRestricted) {
+                    pthread_mutex_unlock(&g_tcc_mutex);
                     if (error_out) *error_out = strdup("permission_denied");
                     return NULL;
+                } else {
+                    pthread_mutex_unlock(&g_tcc_mutex);
                 }
-            } else if (status == AVAuthorizationStatusDenied || status == AVAuthorizationStatusRestricted) {
-                if (error_out) *error_out = strdup("permission_denied");
-                return NULL;
             }
-        }
 
-        AVAudioEngine *engine = [[AVAudioEngine alloc] init];
+            AVAudioEngine *engine = [[AVAudioEngine alloc] init];
         AVAudioInputNode *input = [engine inputNode];
         AVAudioFormat *format = [input outputFormatForBus:0];
         if (format.sampleRate <= 0) {
@@ -441,10 +562,11 @@ void *mac_start_mic_audio_capture(
             return NULL;
         }
 
-        return (__bridge_retained void *)session;
-    } @catch (NSException *exception) {
-        if (error_out) *error_out = strdup([[exception reason] UTF8String]);
-        return NULL;
+            return (__bridge_retained void *)session;
+        } @catch (NSException *exception) {
+            if (error_out) *error_out = strdup([[exception reason] UTF8String]);
+            return NULL;
+        }
     }
 }
 
