@@ -57,7 +57,9 @@ pub fn hide_checked(window: &tauri::WebviewWindow) -> Result<(), String> {
 fn native_handle(window: &tauri::WebviewWindow) -> Result<usize, String> {
     #[cfg(target_os = "windows")]
     { window.hwnd().map(|handle| handle.0 as usize).map_err(|error| error.to_string()) }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    { window.ns_window().map(|handle| handle as usize).map_err(|error| error.to_string()) }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     { let _ = window; Ok(1) }
 }
 

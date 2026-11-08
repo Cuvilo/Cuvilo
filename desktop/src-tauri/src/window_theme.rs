@@ -1,6 +1,7 @@
 use tauri::Manager;
 pub fn requested(preference:&str)->Option<tauri::Theme>{match preference{"dark"=>Some(tauri::Theme::Dark),"system"=>None,_=>Some(tauri::Theme::Light)}}
 // Match Tao's Windows app-theme resolution without consulting a forced window.
+#[allow(dead_code)]
 fn resolved_system_dark(light:Option<u32>,high_contrast:bool)->bool{!high_contrast&&light==Some(0)}
 
 #[cfg(target_os="windows")]
@@ -14,7 +15,13 @@ pub fn system_dark()->bool{
  resolved_system_dark(light,high_contrast)
 }
 
-#[cfg(not(target_os="windows"))]
+#[cfg(target_os="macos")]
+pub fn system_dark()->bool{
+ unsafe extern "C" { fn mac_is_dark_mode() -> bool; }
+ unsafe { mac_is_dark_mode() }
+}
+
+#[cfg(not(any(target_os="windows", target_os="macos")))]
 pub fn system_dark()->bool{
  false
 }
@@ -118,6 +125,7 @@ pub async fn preview(app:&tauri::AppHandle,preference:String,resolved_dark:Optio
   #[cfg(not(target_os = "windows"))]
   {
    let _ = (start, &resolved_dark);
+   if preview_current(ticket){if let Some(core)=app.try_state::<std::sync::Arc<crate::core::Core>>(){core.emit(serde_json::json!({"type":"themePreview","sessionId":"","theme":preference}));}}
   }
  }
  if !preview_current(ticket){return Ok(());}

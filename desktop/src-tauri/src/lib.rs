@@ -616,8 +616,18 @@ pub fn run() {
             set_answer_memory,
             begin_screen_capture, cancel_screen_capture, submit_screen_question, correct_screen_question, screen_capture_image, screen_ocr_status
         ])
-        .run(tauri::generate_context!())
-        .expect("desktop application failed");
+        .build(tauri::generate_context!())
+        .expect("desktop application failed")
+        .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { has_visible_windows: false, .. } = event {
+                if !interview_windows::active(app) {
+                    restore_main(app);
+                }
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }
 
 #[cfg(test)] mod reading_validation_tests {

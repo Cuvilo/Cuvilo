@@ -164,7 +164,7 @@ export function InterviewView({ store: s }: { store: Copilot }) {
               <SelectTrigger id="audio-source" aria-label={tr("会议音源")}><SelectValue placeholder={tr("选择会议音源")} /></SelectTrigger>
               <SelectContent>{s.sources.map(item => <SelectItem key={item.id} value={item.id}>{tr(item.name)}{item.recommended ? tr(" · 推荐") : ""}</SelectItem>)}</SelectContent>
             </Select><IconButton className="tool-button rounded-full bg-secondary" label={tr("刷新音源")} disabled={locked} onClick={() => void s.loadSources()}><RefreshCw /></IconButton></div>
-            <p className="inspector-hint">{source?.kind === "system" ? source.processCaptureSupported===false?tr("当前 Windows 仅支持系统声音采集，可正常使用；无法仅采集指定应用。"):tr("系统声音会采集所有应用的音频。") : source ? tr("仅采集所选应用声音") : tr("先打开腾讯会议并播放声音")}</p>
+            <p className="inspector-hint">{source?.kind === "system" ? source.processCaptureSupported===false?tr("当前 Windows 仅支持系统声音采集，可正常使用；无法仅采集指定应用。"):tr("系统声音会采集所有应用的音频。") : source?.id === "mic" ? tr("通过麦克风采集环境与外放声音。") : source ? tr("仅采集所选应用声音") : tr("先打开腾讯会议并播放声音")}</p>
             <AudioMeter store={s} onPassed={sourceId => { s.setAudioCheckedSource(sourceId); if(ready.model&&ready.asr)s.setHomeGuide("auto"); }} />
           </section> : <MaterialDropZone store={s} disabled={locked} className="preparation-material-list" onDropPaths={paths => { importAfterClose.current = paths; setDialogOpen(false); }}>
             {s.data.materials.length ? s.data.materials.map(material => <div key={material.id} className="preparation-material-row">

@@ -148,6 +148,7 @@ impl Database {
         tx.commit()?;
         Ok(keep)
     }
+    #[allow(dead_code)]
     pub fn delete_session(&mut self, id: &str) -> Result<()> {
         self.delete_sessions(&[id.to_string()])
     }

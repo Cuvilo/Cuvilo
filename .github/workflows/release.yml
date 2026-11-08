@@ -55,8 +55,9 @@ jobs:
           tagName: v__VERSION__
           releaseName: Cuvilo __VERSION__
           releaseBody: |
-            下载 Cuvilo 安装包（x64-setup.exe）并安装。现有配置与个人数据会保留。
-            从 0.1.48 起支持软件内检查和安装后续更新。
+            - Windows：下载 `x64-setup.exe` 安装包并安装。
+            - macOS：下载 `universal.dmg` 镜像并将 `Cuvilo.app` 拖入 `Applications`（若提示无法验证开发者，请在“系统设置 > 隐私与安全性”中点击“仍要打开”）。
+            现有配置与个人数据会保留；从 0.1.48 起支持软件内检查和安装后续更新。
           releaseDraft: true
           prerelease: false
           uploadUpdaterJson: true

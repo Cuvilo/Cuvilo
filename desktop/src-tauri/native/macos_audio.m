@@ -90,11 +90,24 @@ void mac_audio_free_string(char *s) {
     if (s) free(s);
 }
 
+bool mac_is_dark_mode(void) {
+    @autoreleasepool {
+        NSString *style = [[NSUserDefaults standardUserDefaults] stringForKey:@"AppleInterfaceStyle"];
+        return style != nil && [style caseInsensitiveCompare:@"Dark"] == NSOrderedSame;
+    }
+}
+
 void mac_activate_and_order_front(void) {
     @autoreleasepool {
         void (^block)(void) = ^{
             [NSApp activateIgnoringOtherApps:YES];
             for (NSWindow *window in [NSApp windows]) {
+                [window setHidesOnDeactivate:NO];
+                if ([window level] > NSNormalWindowLevel) {
+                    NSWindowCollectionBehavior behavior = [window collectionBehavior];
+                    behavior |= NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorFullScreenAuxiliary;
+                    [window setCollectionBehavior:behavior];
+                }
                 if ([window isVisible]) {
                     [window orderFrontRegardless];
                 }
@@ -118,6 +131,7 @@ char *mac_ocr_recognize_png(const uint8_t *png_bytes, size_t png_len, char **err
         VNRecognizeTextRequest *request = [[VNRecognizeTextRequest alloc] init];
         request.recognitionLevel = VNRequestTextRecognitionLevelAccurate;
         request.usesLanguageCorrection = YES;
+        request.minimumTextHeight = 0.0f;
         if (@available(macOS 13.0, *)) {
             request.automaticallyDetectsLanguage = YES;
         }

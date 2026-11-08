@@ -92,7 +92,7 @@ pub async fn start(app: tauri::AppHandle, options: StartOptions) -> Result<Sessi
     if core.runtime.lock().unwrap().is_some() {
         return Err("已有面试尚未结束，请返回答案窗口".into());
     }
-    let microphone = options.microphone;
+    let microphone = options.microphone && !(cfg!(target_os = "macos") && options.source.id == "mic");
     let session = core
         .start(options)
         .await

@@ -37,11 +37,77 @@ pub fn system_proxy() -> Option<String> {
 }
 #[cfg(not(target_os = "windows"))]
 pub fn system_proxy() -> Option<String> {
-    std::env::var("HTTP_PROXY")
+    if let Ok(val) = std::env::var("HTTPS_PROXY")
+        .or_else(|_| std::env::var("https_proxy"))
+        .or_else(|_| std::env::var("HTTP_PROXY"))
         .or_else(|_| std::env::var("http_proxy"))
         .or_else(|_| std::env::var("ALL_PROXY"))
         .or_else(|_| std::env::var("all_proxy"))
-        .ok()
+    {
+        let trimmed = val.trim();
+        if !trimmed.is_empty() {
+            return Some(if trimmed.contains("://") {
+                trimmed.to_string()
+            } else {
+                format!("http://{trimmed}")
+            });
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        static CACHE: std::sync::OnceLock<std::sync::Mutex<(std::time::Instant, Option<String>)>> =
+            std::sync::OnceLock::new();
+        let cache = CACHE.get_or_init(|| {
+            std::sync::Mutex::new((
+                std::time::Instant::now() - Duration::from_secs(60),
+                None,
+            ))
+        });
+        if let Ok(guard) = cache.lock() {
+            if guard.0.elapsed() < Duration::from_secs(5) {
+                return guard.1.clone();
+            }
+        }
+        let detected = std::process::Command::new("/usr/sbin/scutil")
+            .arg("--proxy")
+            .output()
+            .ok()
+            .and_then(|out| {
+                if !out.status.success() {
+                    return None;
+                }
+                parse_scutil_proxy(&String::from_utf8_lossy(&out.stdout))
+            });
+        if let Ok(mut guard) = cache.lock() {
+            *guard = (std::time::Instant::now(), detected.clone());
+        }
+        return detected;
+    }
+    #[cfg(not(target_os = "macos"))]
+    None
+}
+
+#[allow(dead_code)]
+fn parse_scutil_proxy(output: &str) -> Option<String> {
+    let mut map = std::collections::HashMap::new();
+    for line in output.lines() {
+        if let Some((k, v)) = line.split_once(':') {
+            map.insert(k.trim(), v.trim());
+        }
+    }
+    for (enable_key, host_key, port_key) in [
+        ("HTTPSEnable", "HTTPSProxy", "HTTPSPort"),
+        ("HTTPEnable", "HTTPProxy", "HTTPPort"),
+    ] {
+        if map.get(enable_key) == Some(&"1") {
+            if let (Some(&host), Some(&port)) = (map.get(host_key), map.get(port_key)) {
+                if !host.is_empty() && !port.is_empty() {
+                    return Some(format!("http://{host}:{port}"));
+                }
+            }
+        }
+    }
+    None
 }
 pub fn client(n: &Network) -> Result<reqwest::Client> { client_with_redirects(n,true) }
 pub fn client_no_redirects(n: &Network) -> Result<reqwest::Client> { client_with_redirects(n,false) }
