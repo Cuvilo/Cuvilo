@@ -1,6 +1,6 @@
 [package]
 name = "cuvilo"
-version = "0.1.58"
+version = "0.1.59"
 description = "Cuvilo real-time interview assistant"
 authors = ["Cuvilo contributors"]
 edition = "2021"

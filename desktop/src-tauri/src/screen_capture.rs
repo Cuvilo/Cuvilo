@@ -214,7 +214,7 @@ pub fn start(app:tauri::AppHandle)->Result<()> {
  });Ok(())
 }
 #[derive(Serialize)] pub struct OcrStatus{pub available:bool,pub languages:Vec<String>,pub message:String}
-pub fn availability()->OcrStatus {match native::languages(){Ok(languages)=>OcrStatus{available:!languages.is_empty(),message:if languages.is_empty(){"请在 Windows 语言选项中安装 OCR 语言组件".into()}else{"本地 Windows OCR；仅识别文字发送给回答模型".into()},languages},Err(e)=>OcrStatus{available:false,languages:vec![],message:format!("本地识别不可用：{e}")}}}
+pub fn availability()->OcrStatus {match native::languages(){Ok(languages)=>OcrStatus{available:!languages.is_empty(),message:if languages.is_empty(){"请在 Windows 语言选项中安装 OCR 语言组件".into()}else if cfg!(target_os="macos"){"本地 Apple Vision OCR；仅识别文字发送给回答模型".into()}else{"本地 Windows OCR；仅识别文字发送给回答模型".into()},languages},Err(e)=>OcrStatus{available:false,languages:vec![],message:format!("本地识别不可用：{e}")}}}
 pub fn image(core:&Core,id:&str)->Result<String>{use base64::Engine;let state=core.screen.lock().unwrap();ensure!(state.job_id==id,"原截图已释放，请重新框选");let image=state.image.as_ref().context("原截图已释放")?;Ok(format!("data:image/bmp;base64,{}",base64::engine::general_purpose::STANDARD.encode(image.as_ref())))}
 
 #[cfg(test)] mod tests {

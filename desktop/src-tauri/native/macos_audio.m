@@ -1,4 +1,6 @@
 #import <Foundation/Foundation.h>
+#import <AppKit/AppKit.h>
+#import <Vision/Vision.h>
 #import <AVFoundation/AVFoundation.h>
 #import <CoreMedia/CoreMedia.h>
 #import <CoreGraphics/CoreGraphics.h>
@@ -86,6 +88,69 @@ bool mac_request_screen_capture_permission(void) {
 
 void mac_audio_free_string(char *s) {
     if (s) free(s);
+}
+
+void mac_activate_and_order_front(void) {
+    @autoreleasepool {
+        void (^block)(void) = ^{
+            [NSApp activateIgnoringOtherApps:YES];
+            for (NSWindow *window in [NSApp windows]) {
+                if ([window isVisible]) {
+                    [window orderFrontRegardless];
+                }
+            }
+        };
+        if ([NSThread isMainThread]) {
+            block();
+        } else {
+            dispatch_async(dispatch_get_main_queue(), block);
+        }
+    }
+}
+
+char *mac_ocr_recognize_png(const uint8_t *png_bytes, size_t png_len, char **error_out) {
+    @autoreleasepool {
+        if (!png_bytes || png_len == 0) {
+            if (error_out) *error_out = strdup("空截图数据");
+            return NULL;
+        }
+        NSData *data = [NSData dataWithBytes:png_bytes length:png_len];
+        VNRecognizeTextRequest *request = [[VNRecognizeTextRequest alloc] init];
+        request.recognitionLevel = VNRequestTextRecognitionLevelAccurate;
+        request.usesLanguageCorrection = YES;
+        if (@available(macOS 13.0, *)) {
+            request.automaticallyDetectsLanguage = YES;
+        }
+        NSArray<NSString *> *supported = [request supportedRecognitionLanguagesAndReturnError:nil];
+        if (supported.count > 0) {
+            NSMutableArray<NSString *> *langs = [NSMutableArray array];
+            for (NSString *preferred in @[@"zh-Hans", @"zh-Hant", @"en-US"]) {
+                if ([supported containsObject:preferred]) {
+                    [langs addObject:preferred];
+                }
+            }
+            if (langs.count > 0) {
+                request.recognitionLanguages = langs;
+            }
+        }
+        VNImageRequestHandler *handler = [[VNImageRequestHandler alloc] initWithData:data options:@{}];
+        NSError *err = nil;
+        if (![handler performRequests:@[request] error:&err]) {
+            if (error_out) {
+                *error_out = strdup(err ? [[err localizedDescription] UTF8String] : "Apple Vision OCR 识别失败");
+            }
+            return NULL;
+        }
+        NSMutableArray<NSString *> *lines = [NSMutableArray array];
+        for (VNRecognizedTextObservation *obs in request.results) {
+            VNRecognizedText *top = [[obs topCandidates:1] firstObject];
+            if (top && top.string.length > 0) {
+                [lines addObject:top.string];
+            }
+        }
+        NSString *joined = [lines componentsJoinedByString:@"\n"];
+        return strdup([joined UTF8String] ?: "");
+    }
 }
 
 static void process_audio_sample_buffer(

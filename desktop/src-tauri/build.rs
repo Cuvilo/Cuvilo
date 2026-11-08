@@ -8,6 +8,8 @@ fn main() {
             .compile("cuvilo_macos_audio");
         for framework in [
             "Foundation",
+            "AppKit",
+            "Vision",
             "AVFoundation",
             "CoreMedia",
             "ScreenCaptureKit",

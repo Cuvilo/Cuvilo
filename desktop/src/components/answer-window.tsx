@@ -1,6 +1,6 @@
 import {t as tr, useLocale, messageText} from "@/i18n";
 import {AnswerSources} from "./answer-sources";
-import { manualShortcut,shortcutMatches } from "@/lib/shortcut-validation";
+import { manualShortcut,shortcutMatches,formatShortcut } from "@/lib/shortcut-validation";
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
 import { ArrowDown, BookOpen, PencilLine, MoreHorizontal, Pin, RefreshCw, Square, X, Zap } from "lucide-react";
@@ -138,7 +138,7 @@ export function AnswerWindow({ store: s }: { store: Copilot }) {
       <TooltipHint label={s.currentStatus}><span role="status" aria-label={s.currentStatus}
         className={cn("status-dot", connected && "bg-success", meetingError && "bg-destructive")} /></TooltipHint>
       <span className="h-full min-w-3 flex-1" data-tauri-drag-region />
-      <TooltipHint label={(recognizing||generating ? s.data.settings.shortcuts.cancel : s.data.settings.shortcuts.answer)||tr("可在设置中启用快捷键")}><Button variant={recognizing||generating ? "secondary" : "primary"} size="sm" className="answer-primary-action h-7 w-[88px] gap-1 rounded-lg px-2 text-xs leading-[18px] has-[>svg]:px-2" disabled={!s.data.session || !!s.busy || screen?.stage==="ready"}
+      <TooltipHint label={formatShortcut(recognizing||generating ? s.data.settings.shortcuts.cancel : s.data.settings.shortcuts.answer)||tr("可在设置中启用快捷键")}><Button variant={recognizing||generating ? "secondary" : "primary"} size="sm" className="answer-primary-action h-7 w-[88px] gap-1 rounded-lg px-2 text-xs leading-[18px] has-[>svg]:px-2" disabled={!s.data.session || !!s.busy || screen?.stage==="ready"}
         onClick={() => recognizing ? void s.action("screen-cancel",()=>invoke("cancel_screen_capture")) : generating ? void s.action("cancel", () => invoke("cancel_answer")) : void s.request()}>
         {recognizing||generating ? <Square /> : <Zap />}{recognizing ? tr("取消识别") : generating ? tr("停止生成") : tr("立即回答")}
       </Button></TooltipHint>
@@ -149,8 +149,8 @@ export function AnswerWindow({ store: s }: { store: Copilot }) {
           <Button ref={manualTrigger} variant="ghost" size="icon-xs" className="tool-button rounded-full bg-secondary hover:bg-surface-inset text-muted-foreground" aria-label={tr("更多")}><MoreHorizontal /></Button>
         </DropdownMenuTrigger></TooltipHint>
         <DropdownMenuContent className="answer-reading-menu" onCloseAutoFocus={event => { if (manualFromMenu.current) { event.preventDefault(); manualFromMenu.current = false; queueManual(); } }}>
-          <DropdownMenuItem disabled={!s.data.session||pendingScreen||screen?.stage==="answering"||!!s.busy} onSelect={()=>void s.action("screen",async()=>{if(!await s.preferences.retry())throw "设置未保存，请重试";await invoke("begin_screen_capture");})}><ScanText/>{tr("截图提问")}<span className="ml-auto text-xs text-muted-foreground">{s.data.settings.shortcuts.screen||""}</span></DropdownMenuItem>
-          <DropdownMenuItem aria-label={tr("手动提问")} disabled={!s.data.session||pendingScreen} onSelect={() => { manualFromMenu.current = true; }}><PencilLine />{tr("手动提问")}<span className="ml-auto text-xs text-muted-foreground">{manualShortcut(s.data.settings.shortcuts)}</span></DropdownMenuItem>
+          <DropdownMenuItem disabled={!s.data.session||pendingScreen||screen?.stage==="answering"||!!s.busy} onSelect={()=>void s.action("screen",async()=>{if(!await s.preferences.retry())throw "设置未保存，请重试";await invoke("begin_screen_capture");})}><ScanText/>{tr("截图提问")}<span className="ml-auto text-xs text-muted-foreground">{formatShortcut(s.data.settings.shortcuts.screen)}</span></DropdownMenuItem>
+          <DropdownMenuItem aria-label={tr("手动提问")} disabled={!s.data.session||pendingScreen} onSelect={() => { manualFromMenu.current = true; }}><PencilLine />{tr("手动提问")}<span className="ml-auto text-xs text-muted-foreground">{formatShortcut(manualShortcut(s.data.settings.shortcuts))}</span></DropdownMenuItem>
           <DropdownMenuSeparator />
           <div className="answer-font-row" role="group" aria-label={tr("答案字号")}>
             <span>{tr("字号")}</span><div><Button variant="ghost" size="icon-xs" aria-label={tr("减小字号")} disabled={s.fontSize <= 14} onClick={() => s.setFontSize(size => Math.max(14,size-1))}>A−</Button><span className="tabular-nums">{s.fontSize}</span><Button variant="ghost" size="icon-xs" aria-label={tr("增大字号")} disabled={s.fontSize >= 30} onClick={() => s.setFontSize(size => Math.min(30,size+1))}>A＋</Button></div>

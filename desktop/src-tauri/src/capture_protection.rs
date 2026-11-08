@@ -282,8 +282,21 @@ pub fn show_checked(app: &tauri::AppHandle, label: &str) -> Result<(), String> {
     emit(app);
     crate::window_lifecycle::content_visible_on_ui(&window, true)?;
     window.show().map_err(|e| e.to_string())?;
+    #[cfg(target_os = "windows")]
     window.unminimize().map_err(|e| e.to_string())?;
-    window.set_focus().map_err(|e| e.to_string())
+    #[cfg(not(target_os = "windows"))]
+    if window.is_minimized().unwrap_or(false) {
+        let _ = window.unminimize();
+    }
+    window.set_focus().map_err(|e| e.to_string())?;
+    #[cfg(target_os = "macos")]
+    {
+        unsafe extern "C" {
+            fn mac_activate_and_order_front();
+        }
+        unsafe { mac_activate_and_order_front() };
+    }
+    Ok(())
 }
 pub(crate) async fn present_locked(app: &tauri::AppHandle, label: &str) -> Result<(), String> {
     if label == "answer" && crate::window_lifecycle::closing(app) {

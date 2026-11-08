@@ -4,6 +4,7 @@ import { ArrowUp, ArrowUpRight, Square } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Copilot } from "@/hooks/use-copilot";
 import { TooltipHint } from "./ui/tooltip";
+import { formatShortcut } from "@/lib/shortcut-validation";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { IconButton } from "./common";
@@ -27,7 +28,7 @@ export function QuestionComposer({ store: s, compact = false, inputRef }: { stor
         <div className="composer-tools">
           {!compact && <IconButton label={tr("打开答案窗口")} className="tool-button rounded-full bg-secondary hover:bg-surface-inset" onClick={() => void s.showAnswer()}><ArrowUpRight /></IconButton>}
         </div>
-        <TooltipHint label={`${label} · ${generating ? s.data.settings.shortcuts.cancel : s.data.settings.shortcuts.answer}`}><Button variant={generating ? "secondary" : "primary"} size="icon-sm" className="composer-submit rounded-full"
+        <TooltipHint label={`${label} · ${formatShortcut(generating ? s.data.settings.shortcuts.cancel : s.data.settings.shortcuts.answer)}`}><Button variant={generating ? "secondary" : "primary"} size="icon-sm" className="composer-submit rounded-full"
           aria-label={tr(label)}
           disabled={!active || !!s.busy}
           onClick={() => generating ? void s.action("cancel", () => invoke("cancel_answer")) : void s.request()}>

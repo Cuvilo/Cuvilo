@@ -117,7 +117,11 @@ pub async fn install_app_update(window: tauri::WebviewWindow, app: tauri::AppHan
         crate::window_memory::flush_main(&app);
         Ok(())
     }).await?;
-    update.install(bytes).map_err(|_| "无法启动更新安装，请重试".to_string())
+    update.install(bytes).map_err(|_| "无法启动更新安装，请重试".to_string())?;
+    #[cfg(not(windows))]
+    app.restart();
+    #[cfg(windows)]
+    Ok(())
 }
 
 #[cfg(test)]

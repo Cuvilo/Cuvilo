@@ -8,7 +8,7 @@ import type { AppUpdater } from "@/hooks/use-app-updater";
 import type { Copilot } from "@/hooks/use-copilot";
 import {useOcrStatus} from "@/hooks/use-ocr-status";
 import { useDataTools, useWindowMemory } from "@/hooks/use-data-tools";
-import { shortcutConflicts, shortcutLabels, manualShortcut } from "@/lib/shortcut-validation";
+import { shortcutConflicts, shortcutLabels, manualShortcut, formatShortcut, isMacPlatform } from "@/lib/shortcut-validation";
 import { version as sourceVersion } from "../../package.json";
 import {useAutostart} from "@/hooks/use-autostart";
 import { type CatalogCache } from "./model-picker";
@@ -32,17 +32,19 @@ const sections=[
 ];
 function ShortcutInput({id,value,onChange,invalid,describedBy}:{id:string;value:string;onChange:(value:string)=>void;invalid:boolean;describedBy?:string}) {
   useLocale();
-  return <Input id={id} readOnly value={value} placeholder={tr("未启用")} aria-invalid={invalid} aria-describedby={describedBy} className="font-mono text-xs" onKeyDown={event=>{
+  const mac=isMacPlatform();
+  return <Input id={id} readOnly value={formatShortcut(value,mac)} placeholder={tr("未启用")} aria-invalid={invalid} aria-describedby={describedBy} className="font-mono text-xs" onKeyDown={event=>{
     if(event.key==="Tab" || event.key==="Escape")return;
     event.preventDefault();event.stopPropagation();
-    if(!event.ctrlKey&&!event.altKey)return;
+    if(!event.ctrlKey&&!event.altKey&&!(mac&&event.metaKey))return;
     if(["ControlLeft","ControlRight","AltLeft","AltRight","ShiftLeft","ShiftRight","MetaLeft","MetaRight"].includes(event.code))return;
     const key=event.code.replace(/^Key/,"").replace(/^Digit/,"");
-    if(key)onChange([event.ctrlKey?"Ctrl":"",event.altKey?"Alt":"",event.shiftKey?"Shift":"",key].filter(Boolean).join("+"));
+    if(key)onChange([mac&&event.metaKey?"Super":"",event.ctrlKey?"Ctrl":"",event.altKey?"Alt":"",event.shiftKey?"Shift":"",key].filter(Boolean).join("+"));
   }}/>;
 }
 export function SettingsView({store:s,serviceOnly,onServiceClose,updates}:{store:Copilot;serviceOnly?:ServiceGroup;onServiceClose?:()=>void;updates?:AppUpdater}) {
   useLocale();
+  const mac=isMacPlatform();
   const [section,setSection]=useState("services"),[query,setQuery]=useState(""),[expanded,setExpanded]=useState(serviceOnly??""),[version,setVersion]=useState(sourceVersion);
   const catalogCache=useRef<CatalogCache>(new Map());
   const ocr=useOcrStatus(s.native);
@@ -80,7 +82,7 @@ export function SettingsView({store:s,serviceOnly,onServiceClose,updates}:{store
         {categories && <h2 className="sr-only">{tr(categories.label)}</h2>}
         {!matches.length && <p className="text-sm text-muted-foreground" role="status">{tr("没有匹配的设置")}</p>}
         <TabsContent value="services" className="settings-section-content settings-services-list">
-          {groups.map(group=>{const selected=group.id==="model"?s.data.settings.activeModel:group.id==="asr"?s.data.settings.asrProvider:s.data.settings.ocrProvider??"local";const provider=s.data.settings.providers.find(p=>p.id===selected);return <section key={group.id} className="settings-service"><h3 aria-label={tr(group.title)}><button type="button" className="settings-service-summary" aria-label={tr("配置{0}", tr(group.title))} aria-haspopup="dialog" onClick={event=>{serviceReturn.current=event.currentTarget;setExpanded(group.id);setAdding(null);}}><span className="settings-service-icon"><group.icon/></span><span className="settings-service-name"><strong>{tr(group.title)}</strong><span>{group.id==="ocr"&&selected==="local"?"Windows OCR":group.id==="ocr"&&selected===youdaoFreeOcr.id?tr(youdaoFreeOcr.name):provider?providerDisplayName(provider):tr("未选择")}</span></span><ChevronDown className="settings-service-chevron"/></button></h3></section>;})}
+          {groups.map(group=>{const selected=group.id==="model"?s.data.settings.activeModel:group.id==="asr"?s.data.settings.asrProvider:s.data.settings.ocrProvider??"local";const provider=s.data.settings.providers.find(p=>p.id===selected);return <section key={group.id} className="settings-service"><h3 aria-label={tr(group.title)}><button type="button" className="settings-service-summary" aria-label={tr("配置{0}", tr(group.title))} aria-haspopup="dialog" onClick={event=>{serviceReturn.current=event.currentTarget;setExpanded(group.id);setAdding(null);}}><span className="settings-service-icon"><group.icon/></span><span className="settings-service-name"><strong>{tr(group.title)}</strong><span>{group.id==="ocr"&&selected==="local"?(mac?"Apple Vision OCR":"Windows OCR"):group.id==="ocr"&&selected===youdaoFreeOcr.id?tr(youdaoFreeOcr.name):provider?providerDisplayName(provider):tr("未选择")}</span></span><ChevronDown className="settings-service-chevron"/></button></h3></section>;})}
 
         </TabsContent>
         <TabsContent value="reading" className="settings-section-content">
@@ -115,7 +117,7 @@ export function SettingsView({store:s,serviceOnly,onServiceClose,updates}:{store
       {groups.filter(group=>group.id===expanded).map(group=>{const provider=draft.providers.find(p=>p.id===group.selected),providers=draft.providers.filter(p=>group.id==="model"?p.kind==="llm":group.id==="ocr"?isOcrProvider(p):["xfyun","tencent","dashscope","volcengine","openai-asr"].includes(p.kind));return <section className="settings-service-dialog-section" key={group.id}>
         <DialogHeader><div className="settings-service-dialog-title">{adding&&<Button variant="ghost" size="icon-sm" aria-label={tr("返回配置")} onClick={()=>setAdding(null)}><ArrowLeft/></Button>}<DialogTitle>{adding?tr("添加"):""}{tr(group.title)}</DialogTitle></div><DialogDescription className="sr-only">{tr("配置服务、检测连接并保存。关闭后保留未保存草稿。")}</DialogDescription></DialogHeader>
         <div className="settings-service-dialog-body">{adding?<div className="settings-preset-list">{providerPresets.filter(p=>p.group===adding).map(p=><Button key={p.id} variant="ghost" onClick={()=>addService(p.id)}>{tr(p.name)}{existingPreset(draft.providers,p.id)?<Check aria-label={tr("已添加")}/>:<Plus/>}</Button>)}</div>:<>
-          <div className="settings-provider-selector"><Select value={group.selected} onValueChange={value=>s.setDraft({...draft,[group.id==="model"?"activeModel":group.id==="asr"?"asrProvider":"ocrProvider"]:value})}><SelectTrigger disabled={providers.length===0&&group.id!=="ocr"} aria-label={group.id==="model"?tr("当前模型服务"):group.id==="asr"?tr("当前服务"):tr("OCR 服务")}><SelectValue placeholder={tr("选择服务")}/></SelectTrigger><SelectContent>{group.id==="ocr"&&<><SelectItem value="local">{tr("本地 · Windows OCR")}</SelectItem><SelectItem value={youdaoFreeOcr.id}>{tr(youdaoFreeOcr.name)}</SelectItem></>}{providers.map((p,index)=><SelectItem key={p.id} value={p.id}>{providerDisplayName(p)}{providers.filter(other=>other.name===p.name).length>1?` · ${index+1}`:""}</SelectItem>)}</SelectContent></Select><Button variant="ghost" size="icon-sm" data-add-service aria-label={tr("添加{0}服务", tr(group.title))} onClick={()=>setAdding(group.id)}><Plus/></Button></div>
+          <div className="settings-provider-selector"><Select value={group.selected} onValueChange={value=>s.setDraft({...draft,[group.id==="model"?"activeModel":group.id==="asr"?"asrProvider":"ocrProvider"]:value})}><SelectTrigger disabled={providers.length===0&&group.id!=="ocr"} aria-label={group.id==="model"?tr("当前模型服务"):group.id==="asr"?tr("当前服务"):tr("OCR 服务")}><SelectValue placeholder={tr("选择服务")}/></SelectTrigger><SelectContent>{group.id==="ocr"&&<><SelectItem value="local">{tr(mac?"本地 · Apple Vision OCR":"本地 · Windows OCR")}</SelectItem><SelectItem value={youdaoFreeOcr.id}>{tr(youdaoFreeOcr.name)}</SelectItem></>}{providers.map((p,index)=><SelectItem key={p.id} value={p.id}>{providerDisplayName(p)}{providers.filter(other=>other.name===p.name).length>1?` · ${index+1}`:""}</SelectItem>)}</SelectContent></Select><Button variant="ghost" size="icon-sm" data-add-service aria-label={tr("添加{0}服务", tr(group.title))} onClick={()=>setAdding(group.id)}><Plus/></Button></div>
           {provider&&<><ProviderFields key={provider.id} store={s} provider={provider} group={group.id} onRemove={removeService} actions={false} catalogCache={catalogCache}/></>}
         </>}</div>
         {!adding&&<DialogFooter>{provider?<ProviderActions store={s} provider={provider} group={group.id} onRemove={removeService} onSave={()=>void saveService(group.id)}/>:group.id==="ocr"&&group.selected===youdaoFreeOcr.id?<ProviderActions store={s} provider={youdaoFreeOcr} group="ocr" onSave={()=>void saveService("ocr")}/>:group.id==="ocr"&&group.selected==="local"?<><Button variant="outline" size="sm" disabled={!s.native||ocr.checking} onClick={()=>{setOcrTested(true);ocr.retry();}}>{tr("检测")}</Button>{ocrTested&&<p role="status" className={ocr.status?.available?"settings-test-inline text-muted-foreground":"settings-test-inline text-destructive"}>{ocr.checking?tr("正在检测…"):ocr.status?.available?tr("本地识别可用"):ocr.status?.message??tr("检测失败")}</p>}<Button size="sm" className="ml-auto" disabled={!!s.busy||!s.serviceDirty("ocr")} onClick={()=>void saveService("ocr")}><Check/>{tr("保存")}</Button></>:null}</DialogFooter>}

@@ -1,9 +1,13 @@
 use tauri::Manager;
 
 pub fn configure(window: &tauri::WebviewWindow, hidden: bool) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
     window
         .set_skip_taskbar(hidden || window.label() == "answer")
-        .map_err(|error| format!("无法更新任务栏图标：{error}"))
+        .map_err(|error| format!("无法更新任务栏图标：{error}"))?;
+    #[cfg(not(target_os = "windows"))]
+    let _ = (window, hidden);
+    Ok(())
 }
 
 pub fn apply_visible(app: &tauri::AppHandle, hidden: bool) -> Result<(), String> {
